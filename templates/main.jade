@@ -1,0 +1,14 @@
+include ./partials/__header.jade
+body
+    div.jumbotron
+        h1 Taking Stock
+        h2 Monitor your favorite stocks
+    div#stockChart
+    br
+    div#stockList
+    br
+    div#newStock
+        h3 Add a stock by its symbol
+        input#stockInput(name="stockSymbol" placeholder="Ticker symbol")
+        button#stockSubmit Add New
+    script(src="../static/js/events.js")

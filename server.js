@@ -1,21 +1,24 @@
-//
-// # SimpleServer
-//
-// A simple chat server using Socket.IO, Express, and Async.
-//
 var http = require('http');
 var path = require('path');
 
 var async = require('async');
 var socketio = require('socket.io');
 var express = require('express');
+var dotenv = require('dotenv');
+var mongo = require('mongodb');
+var mongoose = require('mongoose');
+var db = mongoose.connection;
 
+
+mongoose.connect('mongodb://localhost:27017/stock-market-charter', function (err, db){
+//mongoose.connect(process.env.MONGOLAB_URI, function (err, db)
 //
-// ## SimpleServer `SimpleServer(obj)`
-//
-// Creates a new instance of SimpleServer with the following options:
-//  * `port` - The HTTP port to listen on. If `process.env.PORT` is set, _it overrides this value_.
-//
+ if (err) {
+   console.log(err);
+      throw new Error('Database failed to connect!');
+   } else {
+      console.log('Successfully connected to MongoDB.');
+
 var router = express();
 var server = http.createServer(router);
 var io = socketio.listen(server);
@@ -81,4 +84,6 @@ function broadcast(event, data) {
 server.listen(process.env.PORT || 3000, process.env.IP || "0.0.0.0", function(){
   var addr = server.address();
   console.log("Chat server listening at", addr.address + ":" + addr.port);
+});
+}
 });

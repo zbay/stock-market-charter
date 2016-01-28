@@ -7,7 +7,10 @@
   "author": "Mostafa Eweda <mo.eweda@gmail.com>",
   "dependencies": {
     "async": "~0.2.8",
+    "dotenv": "^2.0.0",
     "express": "~3.2.4",
+    "mongodb": "^2.1.4",
+    "mongoose": "^4.3.7",
     "socket.io": "~0.9.14"
   }
 }
