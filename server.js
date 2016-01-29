@@ -9,7 +9,9 @@ var mongo = require('mongodb');
 var mongoose = require('mongoose');
 var Stock = require("./dbmodels/stock.js");
 var db = mongoose.connection;
-
+var request = require('request');
+var baseAPIstart = "https://www.quandl.com/api/v3/datasets/WIKI/";
+var baseAPIend = "/data.json?order=asc&api_key=";
 
 mongoose.connect('mongodb://localhost:27017/stock-market-charter', function (err, db){
 //mongoose.connect(process.env.MONGOLAB_URI, function (err, db)
@@ -47,13 +49,29 @@ io.on('connection', function (socket) {
       if (!stock.length){
        return; 
       }
-      var newStock = new Stock({"symbol": stock});
-      newStock.save(function(err, msg){
+      //console.log(baseAPIstart + stock + baseAPIend + process.env.QANDL_KEY);
+      console.log(baseAPIstart + stock + baseAPIend + "FA9U87SHeUggkweQ-hdU");
+      request({
+        method:"GET",
+       // url: baseAPIstart + stock + baseAPIend + process.env.QANDL_KEY
+        url: baseAPIstart + stock + baseAPIend + "FA9U87SHeUggkweQ-hdU"
+      },
+      function(error, response, body){
+        if(body && !error){
+          console.log(body);
+            var newStock = new Stock({"symbol": stock, "priceData": body});
+          newStock.save(function(err, msg){
         if(msg && !err){
           broadcast('stock', stock);
         stocks.push(stock); 
         }
       });
+        }
+        else{
+          alert(error);
+        }
+      });
+      
     });
     
       socket.on('stockDelete', function (stk) {
