@@ -11,7 +11,7 @@ var Stock = require("./dbmodels/stock.js");
 var db = mongoose.connection;
 var request = require('request');
 var baseAPIstart = "https://www.quandl.com/api/v3/datasets/WIKI/";
-var baseAPIend = "/data.json?order=asc&api_key=";
+var baseAPIend = "/data.json?column_index=4&exclude_column_names=true&order=asc&api_key=";
 
 mongoose.connect('mongodb://localhost:27017/stock-market-charter', function (err, db){
 //mongoose.connect(process.env.MONGOLAB_URI, function (err, db)
@@ -57,6 +57,7 @@ io.on('connection', function (socket) {
         url: baseAPIstart + stock + baseAPIend + "FA9U87SHeUggkweQ-hdU"
       },
       function(error, response, body){
+        //closing price is: body.dataset_data.data
         if(body && !error){
           console.log(body);
             var newStock = new Stock({"symbol": stock, "priceData": body});
@@ -64,6 +65,9 @@ io.on('connection', function (socket) {
         if(msg && !err){
           broadcast('stock', stock);
         stocks.push(stock); 
+        }
+        else{
+          broadcast('deleteStock', stock);
         }
       });
         }
