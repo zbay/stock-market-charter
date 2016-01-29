@@ -7,6 +7,7 @@ var express = require('express');
 var dotenv = require('dotenv');
 var mongo = require('mongodb');
 var mongoose = require('mongoose');
+var Stock = require("./dbmodels/stock.js");
 var db = mongoose.connection;
 
 
@@ -45,9 +46,13 @@ io.on('connection', function (socket) {
       if (!stock.length){
        return; 
       }
-
-        broadcast('stock', stock);
-        stocks.push(stock);
+      var newStock = new Stock({"symbol": stock});
+      newStock.save(function(err, msg){
+        if(msg && !err){
+          broadcast('stock', stock);
+        stocks.push(stock); 
+        }
+      });
     });
     
       socket.on('stockDelete', function (stk) {
@@ -56,9 +61,10 @@ io.on('connection', function (socket) {
       if (!stock.length){
        return; 
       }
-
+      Stock.remove({"symbol": stock}, function(err, msg){
         broadcast('stockDelete', stock);
         stocks.splice(stocks.indexOf(stock), 1);
+      });
     });
 
   });
