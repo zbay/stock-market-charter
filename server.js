@@ -49,6 +49,17 @@ io.on('connection', function (socket) {
         broadcast('stock', stock);
         stocks.push(stock);
     });
+    
+      socket.on('stockDelete', function (stk) {
+      var stock = String(stk || '');
+    
+      if (!stock.length){
+       return; 
+      }
+
+        broadcast('stockDelete', stock);
+        stocks.splice(stocks.indexOf(stock), 1);
+    });
 
   });
 

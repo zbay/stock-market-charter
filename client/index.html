@@ -6,8 +6,21 @@
     <link rel="stylesheet" href="/css/bootstrap.min.css">
     <link rel="stylesheet" href="/css/bootstrap-responsive.min.css">
     <style>
-      body {
+          body {
         padding-top: 60px;
+      }
+      .stockEntry{
+       padding-bottom:20px;
+       padding-top:20px;
+       text-align:center;
+       margin-left:auto;
+       margin-right:auto;
+      }
+      form{
+        padding-top:20px;
+        text-align:center;
+        margin-left:auto;
+        margin-right:auto;
       }
     </style>
     <script>
@@ -16,24 +29,30 @@
         
         $scope.stocks = [];
         $scope.text = '';
+        $scope.deleteName = null;
 
         socket.on('connect', function () {
          //
         });
 
         socket.on('stock', function (stock) {
-          alert(stock);
           $scope.stocks.push(stock);
-          alert("Updated scope: " + $scope.stocks);
+          $scope.$apply();
+        });
+        
+        socket.on('stockDelete', function (stock) {
+          $scope.stocks.splice($scope.stocks.indexOf(stock), 1);
           $scope.$apply();
         });
 
         $scope.send = function send() {
-          alert("SEND: " + $scope.text);
-          console.log('Sending stock:', $scope.text);
           socket.emit('stock', $scope.text);
           $scope.text = '';
         };
+        
+        $scope.deleteStock = function deleteStock(stock){
+          socket.emit('stockDelete', stock);
+        }
 
       }
     </script>
@@ -53,12 +72,13 @@
       <div class="row">
         <div class="span12">
           <h2>Tracked Stocks</h2>
-                <div ng-repeat="stk in stocks" class="span3">
-                  <span ng-bind="stk"></span>
-                  <button ng-click="deleteStock()">X</button>
+                <div ng-repeat="stock in stocks" class="span3 stockEntry">
+                  <span ng-bind="stock"></span>
+                  <button ng-click="deleteStock(stock)">X</button>
                 </div>
-
-              <br /><br />
+          </div>
+          </div>
+              <br />
           <div class="row controls">
             <form ng-submit="send()">
               <div class="input-append span7">
@@ -67,8 +87,6 @@
               </div>
             </form>
           </div>
-        </div>
-      </div>
     </div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/jquery.min.js"></script>
