@@ -24,56 +24,33 @@ var server = http.createServer(router);
 var io = socketio.listen(server);
 
 router.use(express.static(path.resolve(__dirname, 'client')));
-var messages = [];
+var stocks = [];
 var sockets = [];
 
 io.on('connection', function (socket) {
-    messages.forEach(function (data) {
-      socket.emit('message', data);
+    stocks.forEach(function (data) {
+      console.log("FOREACH: " + data);
+      socket.emit('stock', data);
     });
 
     sockets.push(socket);
 
     socket.on('disconnect', function () {
       sockets.splice(sockets.indexOf(socket), 1);
-      updateRoster();
     });
 
-    socket.on('message', function (msg) {
-      var text = String(msg || '');
+    socket.on('stock', function (stk) {
+      var stock = String(stk || '');
+    
+      if (!stock.length){
+       return; 
+      }
 
-      if (!text)
-        return;
-
-      socket.get('name', function (err, name) {
-        var data = {
-          name: name,
-          text: text
-        };
-
-        broadcast('message', data);
-        messages.push(data);
-      });
+        broadcast('stock', stock);
+        stocks.push(stock);
     });
 
-    socket.on('identify', function (name) {
-      socket.set('name', String(name || 'Anonymous'), function (err) {
-        updateRoster();
-      });
-    });
   });
-
-function updateRoster() {
-  async.map(
-    sockets,
-    function (socket, callback) {
-      socket.get('name', callback);
-    },
-    function (err, names) {
-      broadcast('roster', names);
-    }
-  );
-}
 
 function broadcast(event, data) {
   sockets.forEach(function (socket) {
@@ -83,7 +60,7 @@ function broadcast(event, data) {
 
 server.listen(process.env.PORT || 3000, process.env.IP || "0.0.0.0", function(){
   var addr = server.address();
-  console.log("Chat server listening at", addr.address + ":" + addr.port);
+  console.log("Stock server listening at", addr.address + ":" + addr.port);
 });
 }
 });

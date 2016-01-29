@@ -11,80 +11,58 @@
       }
     </style>
     <script>
-      function ChatController($scope) {
+      function StockController($scope) {
         var socket = io.connect();
-
-        $scope.messages = [];
-        $scope.roster = [];
-        $scope.name = '';
+        
+        $scope.stocks = [];
         $scope.text = '';
 
         socket.on('connect', function () {
-          $scope.setName();
+         //
         });
 
-        socket.on('message', function (msg) {
-          $scope.messages.push(msg);
-          $scope.$apply();
-        });
-
-        socket.on('roster', function (names) {
-          $scope.roster = names;
+        socket.on('stock', function (stock) {
+          alert(stock);
+          $scope.stocks.push(stock);
+          alert("Updated scope: " + $scope.stocks);
           $scope.$apply();
         });
 
         $scope.send = function send() {
-          console.log('Sending message:', $scope.text);
-          socket.emit('message', $scope.text);
+          alert("SEND: " + $scope.text);
+          console.log('Sending stock:', $scope.text);
+          socket.emit('stock', $scope.text);
           $scope.text = '';
         };
 
-        $scope.setName = function setName() {
-          socket.emit('identify', $scope.name);
-        };
       }
     </script>
   </head>
   <body>
-    <div class="container" ng-controller="ChatController">
+    <div class="container" ng-controller="StockController">
       <div class="navbar navbar-fixed-top navbar-inverse">
         <div class="navbar-inner">
           <div class="pull-right">
-            <a href="https://c9.io" class="brand">Cloud9 IDE</a>
+            <a href="https://www.github.com/zbay" class="brand">Zbay Industries</a>
           </div>
         </div>
       </div>
       <div class="page-header">
-        <h1>Chat Example</h1>
+        <h1>Stock Market Charter</h1>
       </div>
       <div class="row">
-        <div class="span3">
-          <ul class="nav nav-list well">
-            <li class="nav-header">Local Users</li>
-            <li ng-repeat="user in roster" ng-bind="user">
-            </li>
-          </ul>
-        </div>
-        <div class="span9">
-          <table class="table table-striped table-bordered">
-            <thead>
-              <tr>
-                <th class="span2">Name</th>
-                <th class="span7">Text</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr ng-repeat="msg in messages">
-                <td class="span2" ng-bind="msg.name"></td>
-                <td class="span7" ng-bind="msg.text"></td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="span12">
+          <h2>Tracked Stocks</h2>
+                <div ng-repeat="stk in stocks" class="span3">
+                  <span ng-bind="stk"></span>
+                  <button ng-click="deleteStock()">X</button>
+                </div>
+
+              <br /><br />
           <div class="row controls">
             <form ng-submit="send()">
-              <div class="span2"><input type="text" class="input-block-level" ng-model="name" ng-change="setName()" placeholder="Your Name"></div>
               <div class="input-append span7">
-                <input type="text" class="span6" ng-model="text" placeholder="Message">
+                <input type="text" class="span6" ng-model="text" placeholder="Stock symbol">
                 <input type="submit" class="span1 btn btn-primary" value="Send" ng-disabled="!text">
               </div>
             </form>
