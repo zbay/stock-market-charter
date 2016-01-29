@@ -29,9 +29,10 @@ var stocks = [];
 var sockets = [];
 
 io.on('connection', function (socket) {
-    stocks.forEach(function (data) {
-      console.log("FOREACH: " + data);
-      socket.emit('stock', data);
+    var stockStream = Stock.find().stream();
+    stockStream.on("data", function(doc){
+      stocks.push(doc.symbol);
+      socket.emit("stock", doc.symbol);
     });
 
     sockets.push(socket);
@@ -56,9 +57,8 @@ io.on('connection', function (socket) {
     });
     
       socket.on('stockDelete', function (stk) {
-      var stock = String(stk || '');
-    
-      if (!stock.length){
+    var stock = String(stk || '');
+      if (!stock){
        return; 
       }
       Stock.remove({"symbol": stock}, function(err, msg){
