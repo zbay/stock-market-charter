@@ -22,6 +22,12 @@
         margin-left:auto;
         margin-right:auto;
       }
+      #errorMessage{
+        color:red;
+      }
+      .stockEntry{
+        border: 3px solid black;
+      }
     </style>
     <script>
       function StockController($scope) {
@@ -29,19 +35,27 @@
         
         $scope.stocks = [];
         $scope.text = '';
+        $scope.errorMsg = null;
 
         socket.on('connect', function () {
          //
         });
 
         socket.on('stock', function (stock) {
+          $scope.errorMsg = null;
           $scope.stocks.push(stock);
           $scope.$apply();
         });
         
         socket.on('stockDelete', function (stock) {
-          $scope.stocks.splice($scope.stocks.indexOf(stock), 1);
-          $scope.$apply();
+          if($scope.stocks.indexOf(stock) > -1){
+             $scope.errorMsg = null;
+              $scope.stocks.splice($scope.stocks.indexOf(stock), 1);
+              $scope.$apply(); 
+          }
+          else{
+            $scope.errorMsg = "That stock symbol is either invalid or redundant. Try again!";
+          }
         });
 
         $scope.send = function send() {
@@ -71,6 +85,7 @@
       <div class="row">
         <div class="span12">
           <h2>Tracked Stocks</h2>
+                <div id="errorMessage" ng-disabled="!errorMsg" ng-bind="errorMsg"></div>
                 <div ng-repeat="stock in stocks" class="span3 stockEntry">
                   <span ng-bind="stock"></span>
                   <button ng-click="deleteStock(stock)">X</button>

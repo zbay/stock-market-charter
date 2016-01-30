@@ -5,6 +5,8 @@ var async = require('async');
 var socketio = require('socket.io');
 var express = require('express');
 var dotenv = require('dotenv');
+var d3 = require("d3");
+var jsdom = require("jsdom");
 var mongo = require('mongodb');
 var mongoose = require('mongoose');
 var Stock = require("./dbmodels/stock.js");
@@ -49,30 +51,32 @@ io.on('connection', function (socket) {
       if (!stock.length){
        return; 
       }
-      //console.log(baseAPIstart + stock + baseAPIend + process.env.QANDL_KEY);
+      stocks.push(stock); 
+      //console.log(baseAPIstart + stock + baseAPIend + process.env.QUANDL_KEY);
       console.log(baseAPIstart + stock + baseAPIend + "FA9U87SHeUggkweQ-hdU");
       request({
         method:"GET",
-       // url: baseAPIstart + stock + baseAPIend + process.env.QANDL_KEY
+       // url: baseAPIstart + stock + baseAPIend + process.env.QUANDL_KEY
         url: baseAPIstart + stock + baseAPIend + "FA9U87SHeUggkweQ-hdU"
       },
       function(error, response, body){
+        body = JSON.parse(body);
+        console.log("THE BODY: " + body.quandl_error);
+        console.dir("THE RESPONSE: " + response);
         //closing price is: body.dataset_data.data
-        if(body && !error){
+        if(body && !error && !body.quandl_error){
           console.log(body);
             var newStock = new Stock({"symbol": stock, "priceData": body});
           newStock.save(function(err, msg){
         if(msg && !err){
           broadcast('stock', stock);
-        stocks.push(stock); 
-        }
-        else{
-          broadcast('deleteStock', stock);
+        //stocks.push(stock); 
         }
       });
         }
         else{
-          alert(error);
+          console.log("DELETEING: " + stock);
+          broadcast("stockDelete", stock);
         }
       });
       
