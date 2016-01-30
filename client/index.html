@@ -43,14 +43,23 @@
 
         socket.on('stock', function (stock) {
           $scope.errorMsg = null;
-          $scope.stocks.push(stock);
+          $scope. stocks.push({"symbol": stock, "priceData": null}); 
           $scope.$apply();
         });
         
         socket.on('stockDelete', function (stock) {
-          if($scope.stocks.indexOf(stock) > -1){
+           var correctStockIndex = -1;
+          for(var i = 0; i < $scope.stocks.length; i++){
+                if($scope.stocks[i].symbol == stock){
+                correctStockIndex = i;
+                break;
+              }
+          }
+          
+          if(correctStockIndex > -1){
              $scope.errorMsg = null;
-              $scope.stocks.splice($scope.stocks.indexOf(stock), 1);
+                      
+        $scope.stocks.splice(correctStockIndex, 1);
               $scope.$apply(); 
           }
           else{
@@ -87,8 +96,8 @@
           <h2>Tracked Stocks</h2>
                 <div id="errorMessage" ng-disabled="!errorMsg" ng-bind="errorMsg"></div>
                 <div ng-repeat="stock in stocks" class="span3 stockEntry">
-                  <span ng-bind="stock"></span>
-                  <button ng-click="deleteStock(stock)">X</button>
+                  <span ng-bind="stock.symbol"></span>
+                  <button ng-click="deleteStock(stock.symbol)">X</button>
                 </div>
           </div>
           </div>

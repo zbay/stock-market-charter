@@ -5,8 +5,6 @@ var async = require('async');
 var socketio = require('socket.io');
 var express = require('express');
 var dotenv = require('dotenv');
-var d3 = require("d3");
-var jsdom = require("jsdom");
 var mongo = require('mongodb');
 var mongoose = require('mongoose');
 var Stock = require("./dbmodels/stock.js");
@@ -35,7 +33,7 @@ var sockets = [];
 io.on('connection', function (socket) {
     var stockStream = Stock.find().stream();
     stockStream.on("data", function(doc){
-      stocks.push(doc.symbol);
+      stocks.push({"symbol": doc.symbol, "priceData": doc.priceData});
       socket.emit("stock", doc.symbol);
     });
 
@@ -51,7 +49,7 @@ io.on('connection', function (socket) {
       if (!stock.length){
        return; 
       }
-      stocks.push(stock); 
+      stocks.push({"symbol": stock, "priceData": null}); 
       //console.log(baseAPIstart + stock + baseAPIend + process.env.QUANDL_KEY);
       console.log(baseAPIstart + stock + baseAPIend + "FA9U87SHeUggkweQ-hdU");
       request({
@@ -61,12 +59,20 @@ io.on('connection', function (socket) {
       },
       function(error, response, body){
         body = JSON.parse(body);
-        console.log("THE BODY: " + body.quandl_error);
-        console.dir("THE RESPONSE: " + response);
-        //closing price is: body.dataset_data.data
         if(body && !error && !body.quandl_error){
           console.log(body);
             var newStock = new Stock({"symbol": stock, "priceData": body});
+            var correctStock = stocks.filter(function( obj ) {
+            return obj.symbol == stock;
+            })[0];
+            var correctStockIndex = -1;
+            for(var i = 0; i < stocks.length; i++){
+              if(stocks[i].symbol == stock){
+                correctStockIndex = i;
+                break;
+              }
+            }
+            stocks[correctStockIndex].priceData = body;
           newStock.save(function(err, msg){
         if(msg && !err){
           broadcast('stock', stock);
@@ -75,7 +81,6 @@ io.on('connection', function (socket) {
       });
         }
         else{
-          console.log("DELETEING: " + stock);
           broadcast("stockDelete", stock);
         }
       });
@@ -89,7 +94,14 @@ io.on('connection', function (socket) {
       }
       Stock.remove({"symbol": stock}, function(err, msg){
         broadcast('stockDelete', stock);
-        stocks.splice(stocks.indexOf(stock), 1);
+             var correctStockIndex = -1;
+          for(var i = 0; i < stocks.length; i++){
+              if(stocks[i].symbol == stock){
+                correctStockIndex = i;
+                break;
+              }
+            }
+        stocks.splice(correctStockIndex, 1);
       });
     });
 
