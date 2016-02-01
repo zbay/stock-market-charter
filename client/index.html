@@ -1,65 +1,52 @@
 <!doctype html>
 <html lang="en" ng-app>
   <head>
-    <title>Chat Example</title>
+    <title>Stock Market Tracker</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="utf-8" http-equiv="encoding">
     <link rel="stylesheet" href="/css/bootstrap.min.css">
     <link rel="stylesheet" href="/css/bootstrap-responsive.min.css">
-    <style>
-          body {
-        padding-top: 60px;
-      }
-      .stockEntry{
-       padding-bottom:20px;
-       padding-top:20px;
-       text-align:center;
-       margin-left:auto;
-       margin-right:auto;
-      }
-      form{
-        padding-top:20px;
-        text-align:center;
-        margin-left:auto;
-        margin-right:auto;
-      }
-      #errorMessage{
-        color:red;
-      }
-      .stockEntry{
-        border: 3px solid black;
-      }
-    </style>
+    <link rel="stylesheet" href="/css/main.css">
+   <script type="text/javascript" src="https://www.google.com/jsapi"></script>
     <script>
-      function StockController($scope) {
+    'use strict';
+    //test url: https://www.quandl.com/api/v3/datasets/WIKI/FB/data.json??start_date=2015-01-01&end_date=2016-01-01&column_index=4&exclude_column_names=true&order=asc&api_key=FA9U87SHeUggkweQ-hdU
+           google.load("visualization", "1", {packages:["corechart"]});
+        function StockController($scope) {
         var socket = io.connect();
         
         $scope.stocks = [];
+        $scope.priceData = [];
         $scope.text = '';
         $scope.errorMsg = null;
+        $scope.startDate = Date.parse("2015-01-01");
+        $scope.endDate = Date.parse("2016-01-29");
+        $scope.cleanData = [];
+        var dirtyData = [];
+        var baseAPIstart = "https://www.quandl.com/api/v3/datasets/WIKI/";
+        var baseAPIend = "/data.json??start_date=2015-01-01&end_date=2016-01-01&column_index=4&exclude_column_names=true&order=asc&api_key=";
+        var APIkey = "FA9U87SHeUggkweQ-hdU"
 
         socket.on('connect', function () {
-         //
+         $scope.renderStocks(drawChart());
         });
 
         socket.on('stock', function (stock) {
           $scope.errorMsg = null;
-          $scope. stocks.push({"symbol": stock, "priceData": null}); 
+          $scope.stocks.push(stock); 
           $scope.$apply();
         });
         
+        socket.on('renderChart', function(){
+          $scope.renderStocks(drawChart());
+        });
+        
         socket.on('stockDelete', function (stock) {
-           var correctStockIndex = -1;
-          for(var i = 0; i < $scope.stocks.length; i++){
-                if($scope.stocks[i].symbol == stock){
-                correctStockIndex = i;
-                break;
-              }
-          }
           
-          if(correctStockIndex > -1){
+          if($scope.stocks.indexOf(stock) > -1){
              $scope.errorMsg = null;
                       
-        $scope.stocks.splice(correctStockIndex, 1);
+        $scope.stocks.splice($scope.stocks.indexOf(stock), 1);
               $scope.$apply(); 
           }
           else{
@@ -75,9 +62,166 @@
         $scope.deleteStock = function deleteStock(stock){
           socket.emit('stockDelete', stock);
         }
-
+        
+        $scope.renderStocks = function renderStocks(callback){
+            for(var i = 0; i < $scope.stocks.length; i++){
+            var theStock = $scope.stocks[i];
+            $.ajax({
+              url: baseAPIstart + theStock + baseAPIend + APIkey,
+              method: "GET",
+              success: function(doc) {
+                var stockDatums = doc.dataset_data.data;
+                //console.log("DOC: " + doc.dataset_data.data);
+            if($scope.cleanData.length == 0) { //First time through, with no dates yet in the dataset. Push date and price.
+               for(var j = 0; j < stockDatums.length; j++) {
+                  $scope.cleanData.push([new Date(stockDatums[j][0]), stockDatums[j][1]]);
+               }
+            } else { //subsequent times through, where the date may overlap. Only push the price.
+               for(var j = 0; j < stockDatums.length; j++) {
+                  var existingDates = $scope.cleanData.filter(function (value) {
+                     var date = new Date(stockDatums[j][0]);
+                     return(value[0].getTime() == date.getTime());
+                  });
+                  if(existingDates.length > 0) {
+                     existingDates[0].push(stockDatums[j][1]);
+                  }
+               }
+            }
+         }, error: function (request, textStatus, errorThrown) { 
+            for(var j = 0; j < $scope.cleanData.length; j++){
+               $scope.cleanData[j].push(null);
+            }
+         }});
       }
+           // ensure the proper number of columns
+               for(var j = 0; j < $scope.cleanData.length; j++) {
+                  if($scope.cleanData[j].length <  $scope.stocks.length) {
+                     $scope.cleanData[j].push(null);
+                  }
+         callback();
+        }
+        }
+      function drawChart(){
+        console.log($scope.cleanData);
+            var data = new google.visualization.DataTable();
+            data.addColumn("date", 'Date');
+           for(var i = 0; i < $scope.stocks.length; i++){
+             data.addColumn("number", $scope.stocks[i]);
+             if(i == $scope.stocks.length - 1){
+               console.log("TIME TO DRAW");
+                       data.addRows($scope.cleanData);
+                      var options = {'title':"Stock Prices Over Time",
+                       'width':1000,
+                       'height':500,
+                       'colors':['blue', 'green', 'purple', 'orange', 'black'],
+                        'interpolateNulls': true,
+                         'vAxis': {
+                      'viewWindow': {
+                        'max':2000,
+                        'min':0
+                      }
+                     },
+                     'crosshair': { trigger: 'focus' }, 
+                     'hAxis':{
+                      'format': 'M/d/yy',
+                      'gridlines': {count: 10}
+                     }
+                      };
+          var chart = new google.visualization.LineChart(document.getElementById('stockChart'));
+        chart.draw(data, options); 
+             }
+        }
+      }
+            /*$.ajax({
+              method: "GET",
+              url: baseAPIstart + theStock + baseAPIend + APIkey,
+              success: function(doc){
+                dirtyData.push($.map(doc.dataset_data.data, function(datum, index){return [datum]})); //CONVERT THIS OBJECT TO ARRAY
+                if(i == $scope.stocks.length){
+                  //console.log("PRICE DATA: " + $scope.priceData);
+                  $scope.drawChart();
+                }
+              },
+              error: function(err){
+                console.log("ERROR: " + err);
+              }
+            });*/
+          }
+        
+        /*$scope.drawChart = function drawChart(){
+          var data = new google.visualization.DataTable();
+            data.addColumn("date", "Date");
+           for(var i = 0; i < $scope.stocks.length; i++){
+             data.addColumn("number", $scope.stocks[i]);
+        }
+        var options = {'title':"Stock Prices Over Time",
+                       'width':1000,
+                       'height':500,
+                       'colors':["green", "red", 'blue', "orange", "purple", "black", "gray", "pink", "brown", "gold"],
+                          'vAxis': {
+                      'viewWindow': {
+                        'max':2000,
+                        'min':0
+                      }
+        },};
+        var chart = new google.visualization.LineChart(document.getElementById('stockChart'));
+        chart.draw(data, options);*/
+         // console.log("DRAWING CHART");
+ 
+        /*
+        var localData = [];
+        populateTable();
+        
+        function populateTable(){
+          //if within the appropriate date range, add to cleanData
+      for(var i = 0; i < dirtyData.length; i++){
+        var particularStockPriceData = dirtyData[i];
+        for(var j = 0; j < particularStockPriceData.length; j++){
+          var datum = particularStockPriceData[j];
+          //console.log("DATUM: " + datum);
+          var addedDatum = false;
+          if(cleanData.length == 0){
+            console.log("FIRST VALID DATUM");
+             cleanData.push([datum[0], datum[1]]);
+          }
+          else{
+              for(var k = 0; k < cleanData.length; k++){ //if the date isn't in there, add a new array for the date. If the date is in there, just append the price
+          console.log("K DATAAAAAA");
+                if(datum[0] == cleanData[k][0]){
+                  addedDatum = true;
+                  cleanData[k].push(datum[1]);
+                  break;
+                } 
+                if(k == cleanData.length-1 && !addedDatum){
+                  console.log("SHOULD BE PUSHIN");
+                  cleanData.push([datum[0], datum[1]]);
+                }
+          }
+          }
+
+              if(i == dirtyData.length-1 && j == particularStockPriceData.length-1){
+                  console.log("CLEANDATA" + cleanData);
+                  //pushToRow(); 
+                }
+        }
+      }
+        }
+        
+        function pushToRow(){
+          for(var i = 0; i < $scope.cleanData.length; i++){
+            data.addRow($scope.cleanData[i]);
+            if(i == $scope.cleanData.length-1){
+              actuallyDraw();  
+            }
+          }
+        }
+        
+        function actuallyDraw(){
+  
+        }*/
+     // } 
     </script>
+    <!-- <script src="/js/controllers/StockController.js"></script> -->
   </head>
   <body>
     <div class="container" ng-controller="StockController">
@@ -89,15 +233,16 @@
         </div>
       </div>
       <div class="page-header">
-        <h1>Stock Market Charter</h1>
+        <h1>Stock Market Tracker</h1>
       </div>
+      <div id="stockChart"></div>
       <div class="row">
         <div class="span12">
           <h2>Tracked Stocks</h2>
                 <div id="errorMessage" ng-disabled="!errorMsg" ng-bind="errorMsg"></div>
                 <div ng-repeat="stock in stocks" class="span3 stockEntry">
-                  <span ng-bind="stock.symbol"></span>
-                  <button ng-click="deleteStock(stock.symbol)">X</button>
+                  <span ng-bind="stock"></span>
+                  <button ng-click="deleteStock(stock)">X</button>
                 </div>
           </div>
           </div>

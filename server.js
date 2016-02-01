@@ -1,3 +1,4 @@
+//1/29: resume with this http://code.tutsplus.com/tutorials/building-a-multi-line-chart-using-d3js--cms-22935
 var http = require('http');
 var path = require('path');
 
@@ -9,9 +10,6 @@ var mongo = require('mongodb');
 var mongoose = require('mongoose');
 var Stock = require("./dbmodels/stock.js");
 var db = mongoose.connection;
-var request = require('request');
-var baseAPIstart = "https://www.quandl.com/api/v3/datasets/WIKI/";
-var baseAPIend = "/data.json?column_index=4&exclude_column_names=true&order=asc&api_key=";
 
 mongoose.connect('mongodb://localhost:27017/stock-market-charter', function (err, db){
 //mongoose.connect(process.env.MONGOLAB_URI, function (err, db)
@@ -33,8 +31,11 @@ var sockets = [];
 io.on('connection', function (socket) {
     var stockStream = Stock.find().stream();
     stockStream.on("data", function(doc){
-      stocks.push({"symbol": doc.symbol, "priceData": doc.priceData});
+      stocks.push(doc.symbol);
       socket.emit("stock", doc.symbol);
+    });
+    stockStream.on("end", function(){
+      socket.emit("renderChart");
     });
 
     sockets.push(socket);
@@ -49,43 +50,19 @@ io.on('connection', function (socket) {
       if (!stock.length){
        return; 
       }
-      stocks.push({"symbol": stock, "priceData": null}); 
-      //console.log(baseAPIstart + stock + baseAPIend + process.env.QUANDL_KEY);
-      console.log(baseAPIstart + stock + baseAPIend + "FA9U87SHeUggkweQ-hdU");
-      request({
-        method:"GET",
-       // url: baseAPIstart + stock + baseAPIend + process.env.QUANDL_KEY
-        url: baseAPIstart + stock + baseAPIend + "FA9U87SHeUggkweQ-hdU"
-      },
-      function(error, response, body){
-        body = JSON.parse(body);
-        if(body && !error && !body.quandl_error){
-          console.log(body);
-            var newStock = new Stock({"symbol": stock, "priceData": body});
-            var correctStock = stocks.filter(function( obj ) {
-            return obj.symbol == stock;
-            })[0];
-            var correctStockIndex = -1;
-            for(var i = 0; i < stocks.length; i++){
-              if(stocks[i].symbol == stock){
-                correctStockIndex = i;
-                break;
-              }
-            }
-            stocks[correctStockIndex].priceData = body;
+      stocks.push(stock); 
+
+            var newStock = new Stock({"symbol": stock});
           newStock.save(function(err, msg){
         if(msg && !err){
           broadcast('stock', stock);
-        //stocks.push(stock); 
         }
-      });
-        }
-        else{
+                else{
           broadcast("stockDelete", stock);
-        }
+                }
       });
       
-    });
+    }); //socket on stock
     
       socket.on('stockDelete', function (stk) {
     var stock = String(stk || '');
@@ -94,14 +71,7 @@ io.on('connection', function (socket) {
       }
       Stock.remove({"symbol": stock}, function(err, msg){
         broadcast('stockDelete', stock);
-             var correctStockIndex = -1;
-          for(var i = 0; i < stocks.length; i++){
-              if(stocks[i].symbol == stock){
-                correctStockIndex = i;
-                break;
-              }
-            }
-        stocks.splice(correctStockIndex, 1);
+        stocks.splice(stocks.indexOf(stock), 1);
       });
     });
 
