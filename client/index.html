@@ -10,7 +10,7 @@
    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
     <script>
     'use strict';
-    //test url: https://www.quandl.com/api/v3/datasets/WIKI/FB/data.json??start_date=2015-01-01&end_date=2016-01-01&column_index=4&exclude_column_names=true&order=asc&api_key=FA9U87SHeUggkweQ-hdU
+    //test url: https://www.quandl.com/api/v3/datasets/WIKI/FB/data.json?start_date=2015-01-01&end_date=2016-01-01&column_index=4&exclude_column_names=true&order=asc&api_key=FA9U87SHeUggkweQ-hdU
            google.load("visualization", "1", {packages:["corechart"]});
         function StockController($scope) {
         var socket = io.connect();
@@ -24,7 +24,7 @@
         $scope.cleanData = [];
         var dirtyData = [];
         var baseAPIstart = "https://www.quandl.com/api/v3/datasets/WIKI/";
-        var baseAPIend = "/data.json??start_date=2015-01-01&end_date=2016-01-29&column_index=4&exclude_column_names=true&order=asc&api_key=";
+        var baseAPIend = "/data.json?start_date=2015-01-01&end_date=2016-01-29&column_index=4&exclude_column_names=true&order=asc&api_key=";
         var APIkey = "FA9U87SHeUggkweQ-hdU"
 
         socket.on('connect', function () {
@@ -122,119 +122,42 @@
             data.addColumn("date", 'Date');
            for(var i = 0; i < $scope.stocks.length; i++){
              data.addColumn("number", $scope.stocks[i]);
-           }
+             console.log("Column added: " + $scope.stocks[i]);
+             if(i == $scope.stocks.length - 1){
                console.log("TIME TO DRAW");
-                       data.addRows($scope.cleanData);
-                      var options = {'title':"Stock Prices Over Time",
+               for(var j = 0; j < $scope.cleanData.length; j++){
+                 if($scope.cleanData[j].length -1 == $scope.stocks.length){
+                         //console.log("Adding row: " + $scope.cleanData[j]);
+                        data.addRow($scope.cleanData[j]); 
+                 }
+                 if(j == $scope.cleanData.length-1){
+                   finishDrawing(data);
+                 }
+               }
+             }
+        }
+      }
+      function finishDrawing(data){
+                     var options = {'title':"Stock Prices Over Time",
                        'width':1000,
                        'height':500,
                        'colors':['blue', 'green', 'purple', 'orange', 'black'],
                         'interpolateNulls': true,
                          'vAxis': {
                       'viewWindow': {
-                        'max':2000,
                         'min':0
                       }
                      },
                      'crosshair': { trigger: 'focus' }, 
                      'hAxis':{
                       'format': 'M/d/yy',
-                      'gridlines': {count: 10}
                      }
                       };
           var chart = new google.visualization.LineChart(document.getElementById('stockChart'));
         chart.draw(data, options); 
-        }
-        }
-        
-            /*$.ajax({
-              method: "GET",
-              url: baseAPIstart + theStock + baseAPIend + APIkey,
-              success: function(doc){
-                dirtyData.push($.map(doc.dataset_data.data, function(datum, index){return [datum]})); //CONVERT THIS OBJECT TO ARRAY
-                if(i == $scope.stocks.length){
-                  //console.log("PRICE DATA: " + $scope.priceData);
-                  $scope.drawChart();
-                }
-              },
-              error: function(err){
-                console.log("ERROR: " + err);
-              }
-            });*/
-          }
-        
-        /*$scope.drawChart = function drawChart(){
-          var data = new google.visualization.DataTable();
-            data.addColumn("date", "Date");
-           for(var i = 0; i < $scope.stocks.length; i++){
-             data.addColumn("number", $scope.stocks[i]);
-        }
-        var options = {'title':"Stock Prices Over Time",
-                       'width':1000,
-                       'height':500,
-                       'colors':["green", "red", 'blue', "orange", "purple", "black", "gray", "pink", "brown", "gold"],
-                          'vAxis': {
-                      'viewWindow': {
-                        'max':2000,
-                        'min':0
-                      }
-        },};
-        var chart = new google.visualization.LineChart(document.getElementById('stockChart'));
-        chart.draw(data, options);*/
-         // console.log("DRAWING CHART");
- 
-        /*
-        var localData = [];
-        populateTable();
-        
-        function populateTable(){
-          //if within the appropriate date range, add to cleanData
-      for(var i = 0; i < dirtyData.length; i++){
-        var particularStockPriceData = dirtyData[i];
-        for(var j = 0; j < particularStockPriceData.length; j++){
-          var datum = particularStockPriceData[j];
-          //console.log("DATUM: " + datum);
-          var addedDatum = false;
-          if(cleanData.length == 0){
-            console.log("FIRST VALID DATUM");
-             cleanData.push([datum[0], datum[1]]);
-          }
-          else{
-              for(var k = 0; k < cleanData.length; k++){ //if the date isn't in there, add a new array for the date. If the date is in there, just append the price
-          console.log("K DATAAAAAA");
-                if(datum[0] == cleanData[k][0]){
-                  addedDatum = true;
-                  cleanData[k].push(datum[1]);
-                  break;
-                } 
-                if(k == cleanData.length-1 && !addedDatum){
-                  console.log("SHOULD BE PUSHIN");
-                  cleanData.push([datum[0], datum[1]]);
-                }
-          }
-          }
-
-              if(i == dirtyData.length-1 && j == particularStockPriceData.length-1){
-                  console.log("CLEANDATA" + cleanData);
-                  //pushToRow(); 
-                }
-        }
       }
         }
-        
-        function pushToRow(){
-          for(var i = 0; i < $scope.cleanData.length; i++){
-            data.addRow($scope.cleanData[i]);
-            if(i == $scope.cleanData.length-1){
-              actuallyDraw();  
-            }
           }
-        }
-        
-        function actuallyDraw(){
-  
-        }*/
-     // } 
     </script>
     <!-- <script src="/js/controllers/StockController.js"></script> -->
   </head>

@@ -1,4 +1,3 @@
-//1/29: resume with this http://code.tutsplus.com/tutorials/building-a-multi-line-chart-using-d3js--cms-22935
 var http = require('http');
 var path = require('path');
 
