@@ -24,21 +24,23 @@
         $scope.cleanData = [];
         var dirtyData = [];
         var baseAPIstart = "https://www.quandl.com/api/v3/datasets/WIKI/";
-        var baseAPIend = "/data.json??start_date=2015-01-01&end_date=2016-01-01&column_index=4&exclude_column_names=true&order=asc&api_key=";
+        var baseAPIend = "/data.json??start_date=2015-01-01&end_date=2016-01-29&column_index=4&exclude_column_names=true&order=asc&api_key=";
         var APIkey = "FA9U87SHeUggkweQ-hdU"
 
         socket.on('connect', function () {
-         $scope.renderStocks(drawChart());
+         $scope.renderStocks();
         });
 
         socket.on('stock', function (stock) {
           $scope.errorMsg = null;
-          $scope.stocks.push(stock); 
+          if($scope.stocks.indexOf(stock) == -1){
+            $scope.stocks.push(stock);  
+          }
           $scope.$apply();
         });
         
         socket.on('renderChart', function(){
-          $scope.renderStocks(drawChart());
+          $scope.renderStocks();
         });
         
         socket.on('stockDelete', function (stock) {
@@ -63,7 +65,8 @@
           socket.emit('stockDelete', stock);
         }
         
-        $scope.renderStocks = function renderStocks(callback){
+        $scope.renderStocks = function renderStocks(){
+         // console.log($scope.stocks);
             for(var i = 0; i < $scope.stocks.length; i++){
             var theStock = $scope.stocks[i];
             $.ajax({
@@ -78,12 +81,13 @@
                }
             } else { //subsequent times through, where the date may overlap. Only push the price.
                for(var j = 0; j < stockDatums.length; j++) {
-                  var existingDates = $scope.cleanData.filter(function (value) {
+                  var certainDate = $scope.cleanData.filter(function (value) {
                      var date = new Date(stockDatums[j][0]);
                      return(value[0].getTime() == date.getTime());
                   });
-                  if(existingDates.length > 0) {
-                     existingDates[0].push(stockDatums[j][1]);
+                  if(certainDate.length > 0 && certainDate[0].length <= $scope.stocks.length) {
+                     certainDate[0].push(stockDatums[j][1]);
+                    // console.log("CERTAIN DATE[0]: " + certainDate[0] + "CERTAIN DATE: " + certainDate);
                   }
                }
             }
@@ -92,14 +96,25 @@
                $scope.cleanData[j].push(null);
             }
          }});
+         if(i == $scope.stocks.length - 1){
+           console.log("NORMALIZING");
+           normalizeData();
+         }
       }
-           // ensure the proper number of columns
-               for(var j = 0; j < $scope.cleanData.length; j++) {
-                  if($scope.cleanData[j].length <  $scope.stocks.length) {
+        }
+        
+                function normalizeData(){   // ensure the proper number of columns
+              for(var j = 0; j < $scope.cleanData.length; j++) {
+                  while($scope.cleanData[j].length <  $scope.stocks.length) {
                      $scope.cleanData[j].push(null);
                   }
-         callback();
-        }
+                     while($scope.cleanData[j] > $scope.stocks.length){
+                       $scope.cleanData[j].pop();
+                  }
+                  if(j == $scope.cleanData.length-1){
+                    console.log("DRAWING CHART");
+                    drawChart();
+                  }
         }
       function drawChart(){
         console.log($scope.cleanData);
@@ -107,7 +122,7 @@
             data.addColumn("date", 'Date');
            for(var i = 0; i < $scope.stocks.length; i++){
              data.addColumn("number", $scope.stocks[i]);
-             if(i == $scope.stocks.length - 1){
+           }
                console.log("TIME TO DRAW");
                        data.addRows($scope.cleanData);
                       var options = {'title':"Stock Prices Over Time",
@@ -129,9 +144,9 @@
                       };
           var chart = new google.visualization.LineChart(document.getElementById('stockChart'));
         chart.draw(data, options); 
-             }
         }
-      }
+        }
+        
             /*$.ajax({
               method: "GET",
               url: baseAPIstart + theStock + baseAPIend + APIkey,

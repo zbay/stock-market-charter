@@ -25,13 +25,11 @@ var server = http.createServer(router);
 var io = socketio.listen(server);
 
 router.use(express.static(path.resolve(__dirname, 'client')));
-var stocks = [];
 var sockets = [];
 
 io.on('connection', function (socket) {
     var stockStream = Stock.find().stream();
     stockStream.on("data", function(doc){
-      stocks.push(doc.symbol);
       socket.emit("stock", doc.symbol);
     });
     stockStream.on("end", function(){
@@ -50,7 +48,6 @@ io.on('connection', function (socket) {
       if (!stock.length){
        return; 
       }
-      stocks.push(stock); 
 
             var newStock = new Stock({"symbol": stock});
           newStock.save(function(err, msg){
@@ -71,7 +68,6 @@ io.on('connection', function (socket) {
       }
       Stock.remove({"symbol": stock}, function(err, msg){
         broadcast('stockDelete', stock);
-        stocks.splice(stocks.indexOf(stock), 1);
       });
     });
 
