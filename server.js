@@ -27,12 +27,13 @@ router.use(express.static(path.resolve(__dirname, 'client')));
 var sockets = [];
 
 io.on('connection', function (socket) {
-    var stockStream = Stock.find().stream();
-    stockStream.on("data", function(doc){
-      socket.emit("stock", doc.symbol);
-    });
-    stockStream.on("end", function(){
-      socket.emit("renderChart");
+    Stock.find({}, function(err, doc){
+        for(var i = 0; i < doc.length; i++){
+            socket.emit("stock", doc[i].symbol);
+            if(i == doc.length-1){
+              socket.emit("renderChart", null);
+            }
+          }
     });
 
     sockets.push(socket);
@@ -41,7 +42,7 @@ io.on('connection', function (socket) {
       sockets.splice(sockets.indexOf(socket), 1);
     });
 
-    socket.on('stock', function (stk) {
+    socket.on('newStock', function (stk) {
       var stock = String(stk || '');
     
       if (!stock.length){
@@ -52,6 +53,7 @@ io.on('connection', function (socket) {
           newStock.save(function(err, msg){
         if(msg && !err){
           broadcast('stock', stock);
+          broadcast("renderChart", null);
         }
                 else{
           broadcast("stockDelete", stock);
@@ -66,7 +68,10 @@ io.on('connection', function (socket) {
        return; 
       }
       Stock.remove({"symbol": stock}, function(err, msg){
-        broadcast('stockDelete', stock);
+        if(msg && !err){
+         broadcast('stockDelete', stock);
+         broadcast("renderChart", null);
+        }
       });
     });
 
