@@ -1,3 +1,4 @@
+ 'use strict';
 var http = require('http');
 var path = require('path');
 
@@ -27,8 +28,9 @@ router.use(express.static(path.resolve(__dirname, 'client')));
 var sockets = [];
 
 io.on('connection', function (socket) {
+     console.log("Server connection");
     Stock.find({}, function(err, doc){
-        for(var i = 0; i < doc.length; i++){
+        for(let i = 0; i < doc.length; i++){
             socket.emit("stock", doc[i].symbol);
             if(i == doc.length-1){
               socket.emit("renderChart", null);
@@ -39,38 +41,37 @@ io.on('connection', function (socket) {
     sockets.push(socket);
 
     socket.on('disconnect', function () {
+         console.log("Server disconnect");
       sockets.splice(sockets.indexOf(socket), 1);
     });
 
     socket.on('newStock', function (stk) {
+         console.log("Server newStock: " + stk);
       var stock = String(stk || '');
     
       if (!stock.length){
        return; 
       }
-
+    //Add validation of stock symbol?
             var newStock = new Stock({"symbol": stock});
           newStock.save(function(err, msg){
         if(msg && !err){
-          broadcast('stock', stock);
-          broadcast("renderChart", null);
+          //broadcast('stock', stock);
+          broadcast("newStockSuccess", stock);
         }
-                else{
-          broadcast("stockDelete", stock);
-                }
       });
       
     }); //socket on stock
     
       socket.on('stockDelete', function (stk) {
+           console.log("Server stockDelete");
     var stock = String(stk || '');
       if (!stock){
        return; 
       }
       Stock.remove({"symbol": stock}, function(err, msg){
         if(msg && !err){
-         broadcast('stockDelete', stock);
-         broadcast("renderChart", null);
+         broadcast('stockDeleteSuccess', stock);
         }
       });
     });

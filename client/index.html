@@ -13,23 +13,38 @@
     //test url: https://www.quandl.com/api/v3/datasets/WIKI/FB/data.json?start_date=2015-01-01&end_date=2016-01-01&column_index=4&exclude_column_names=true&order=asc&api_key=FA9U87SHeUggkweQ-hdU
            google.load("visualization", "1", {packages:["corechart"]});
         function StockController($scope) {
-        var socket = io.connect();
+        let socket = io.connect();
         
         $scope.stocks = [];
+        let stocks;
         $scope.priceData = [];
         $scope.text = '';
         $scope.errorMsg = null;
         $scope.startDate = Date.parse("2015-01-01");
-        $scope.endDate = Date.parse("2016-01-29");
-        var cleanData = [];
-        var baseAPIstart = "https://www.quandl.com/api/v3/datasets/WIKI/";
-        var baseAPIend = "/data.json?start_date=2015-01-01&end_date=2016-01-29&column_index=4&exclude_column_names=true&order=asc&api_key=";
-        var APIkey = "FA9U87SHeUggkweQ-hdU"
+        $scope.endDate = Date.parse("2015-01-29");
+        let cleanData = [];
+        let baseAPIstart = "https://www.quandl.com/api/v3/datasets/WIKI/";
+        let baseAPIend = "/data.json?start_date=2016-01-01&end_date=2016-01-29&column_index=4&exclude_column_names=true&order=asc&api_key=";
+        let APIkey = "FA9U87SHeUggkweQ-hdU"
 
-        socket.on('connect', function () {
+              socket.on('connect', function () {
+                  console.log("Client connect");
          //socket.emit("renderChart", null);
         });
-
+        
+        socket.on("newStockSuccess", function(stock){
+              console.log("Client newStock");
+                 $scope.errorMsg = null;
+          if($scope.stocks.indexOf(stock) == -1){
+              console.log("Adding stock?");
+              let x = $scope.stocks.length;
+            $scope.stocks[x] = stock;
+             $scope.$apply();
+              console.log($scope.stocks);
+            socket.emit("renderChart");
+          }
+        });
+        
         socket.on('stock', function (stock) {
           $scope.errorMsg = null;
           if($scope.stocks.indexOf(stock) == -1){
@@ -39,78 +54,97 @@
         });
         
         socket.on('renderChart', function(){
-          console.log("SHOULD BE RENDERING");
+             console.log("Client renderChart");
+          //console.log("SHOULD BE RENDERING");
           $scope.renderStocks();
         });
         
-        socket.on('stockDelete', function (stock) {
-          
+        socket.on('stockDeleteSuccess', function (stock) {
           if($scope.stocks.indexOf(stock) > -1){
+              console.log("Client stockDeleteSuccess");
              $scope.errorMsg = null;
                       
         $scope.stocks.splice($scope.stocks.indexOf(stock), 1);
          $scope.$apply(); 
-       socket.emit("renderChart", null);
-          }
-          else{
-            $scope.errorMsg = "That stock symbol is either invalid or redundant. Try again!";
+         console.log($scope.stocks);
+        socket.emit("renderChart");
           }
         });
-
+        
         $scope.send = function send() {
+            console.log("Client Send");
           socket.emit('newStock', $scope.text);
-          socket.emit('renderChart', null);
+          //socket.emit('renderChart', null);
           $scope.text = '';
         };
         
         $scope.deleteStock = function deleteStock(stock){
+            console.log("Client DeleteStock");
           socket.emit('stockDelete', stock);
         }
         
         $scope.renderStocks = function renderStocks(){
-           // console.log($scope.stocks + "---" + $scope.stocks.length);
-            for(var i = 0; i < $scope.stocks.length; i++){
-            var theStock = $scope.stocks[i];
+           // console.log(stocks + "---" + stocks.length);
+           cleanData = [];
+           stocks = $scope.stocks;
+            for(let i = 0; i < stocks.length; i++){
+                 var theStock = stocks[i];
+                console.log(baseAPIstart + theStock + baseAPIend + APIkey);
+            //console.log("Stock: " + theStock);
             $.ajax({
               url: baseAPIstart + theStock + baseAPIend + APIkey,
               method: "GET",
               success: function(doc) {
                 var stockDatums = doc.dataset_data.data;
-                //console.log("DOC: " + stockDatums);
+                //console.log(theStock + ": " + stockDatums);
             if(cleanData.length == 0) { //First time through, with no dates yet in the dataset. Push date and price.
-               for(var j = 0; j < stockDatums.length; j++) {
-                  cleanData[j] = ([new Date(stockDatums[j][0]), stockDatums[j][1]]);
-            if((i >= ($scope.stocks.length - 1)) && (j == stockDatums.length-1)){
-           console.log("NORMALIZING");
+               for(let j = 0; j < stockDatums.length; j++) {
+                  cleanData[j] = [new Date(stockDatums[j][0]), stockDatums[j][1]];
+                  console.log("Case A: " + cleanData[j]);
+            if((i >= (stocks.length - 1)) && (j == stockDatums.length-1)){
+           console.log("NORMALIZING CASE 1");
            normalizeData();
          }
                }
             } else { //subsequent times through, where the date may overlap. Only push the price.
-               for(var j = 0; j < stockDatums.length; j++) {
-                   var date = new Date(stockDatums[j][0]).getTime();
-                   var dateIndex;
-                   for(var k = 0; k < cleanData.length; k++){
+               for(let j = 0; j < stockDatums.length; j++) {
+                   let date = new Date(stockDatums[j][0]).getTime();
+                   let dateIndex;
+                   for(let k = 0; k < cleanData.length; k++){
+                       //console.log("cleanData[k]: " + cleanData[k]);
                        if(cleanData[k][0].getTime() == date){
                            dateIndex = k;
                        }
                    }
                   if(dateIndex && cleanData[dateIndex].length <= $scope.stocks.length) {
-                     cleanData[dateIndex][i] = stockDatums[j][1];
+                     cleanData[dateIndex][i+1] = stockDatums[j][1];
+                     console.log("Case B: " + cleanData[dateIndex]);
                   }
-                          if((i >= $scope.stocks.length - 1) && (j == stockDatums.length-1)){
-           console.log("NORMALIZING");
+                  else{ //new dates on subsequent iterations
+                      if(!dateIndex){
+                        let k = cleanData.length;
+                        cleanData[k] = [new Date(stockDatums[j][0])];
+                        cleanData[k][i+1] = stockDatums[j][i];
+                        for(let l = 1; l < i; l++){
+                            cleanData[k][l] = null;
+                        }
+                        console.log("Case C: " + cleanData[k]);
+                      }
+                  }
+                          if((i >= stocks.length - 1) && (j == stockDatums.length-1)){
+           console.log("NORMALIZING CASE 2");
            normalizeData();
          }
                }
             }
          }, error: function (request, textStatus, errorThrown) { 
-            for(var j = 0; j < cleanData.length; j++){
-                 console.log("CLEAN DATA BEFORE: " + cleanData[j]);
+            for(let j = 0; j < cleanData.length; j++){
+                 //console.log("CLEAN DATA BEFORE: " + cleanData[j]);
                cleanData[j][i] = null;
-                console.log("CLEAN DATA AFTER: " + cleanData[j]);
-                 if((i >= $scope.stocks.length - 1) && (j == cleanData.length-1)){
+                //console.log("CLEAN DATA AFTER: " + cleanData[j]);
+                 if((i >= stocks.length - 1) && (j == cleanData.length-1)){
            //console.log("CLEANDATA: " + cleanData);
-           console.log("NORMALIZING");
+           console.log("NORMALIZING CASE 3");
            normalizeData();
          }
             }
@@ -119,12 +153,12 @@
         }
         
                 function normalizeData(){   // ensure the proper number of columns
-              for(var j = 0; j < cleanData.length; j++) {
-                //console.log("COMPARE: " + cleanData[j].length + "---" + $scope.stocks.length);
-                  while(cleanData[j].length <  $scope.stocks.length) {
+              for(let j = 0; j < cleanData.length; j++) {
+                //console.log("COMPARE: " + cleanData[j].length + "---" + stocks.length);
+                 /* while(cleanData[j].length <  stocks.length) {
                      cleanData[j].push(null);
-                  }
-                     while(cleanData[j] > $scope.stocks.length){
+                  }*/
+                     while(cleanData[j] > stocks.length){
                        cleanData[j].pop();
                   }
                   if(j == cleanData.length-1){
@@ -136,13 +170,13 @@
         console.log(cleanData);
             var data = new google.visualization.DataTable();
             data.addColumn("date", 'Date');
-           for(var i = 0; i < $scope.stocks.length; i++){
-             data.addColumn("number", $scope.stocks[i]);
-             console.log("Column added: " + $scope.stocks[i]);
-             if(i == $scope.stocks.length - 1){
+           for(let i = 0; i < stocks.length; i++){
+             data.addColumn("number", stocks[i]);
+             //console.log("Column added: " + stocks[i]);
+             if(i == stocks.length - 1){
                console.log("TIME TO DRAW");
-               for(var j = 0; j < cleanData.length; j++){
-                 if(cleanData[j].length -1 == $scope.stocks.length){
+               for(let j = 0; j < cleanData.length; j++){
+                 if(cleanData[j].length -1 == stocks.length){
                          //console.log("Adding row: " + cleanData[j]);
                         data.addRow(cleanData[j]); 
                  }
