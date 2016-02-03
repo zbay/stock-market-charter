@@ -16,17 +16,16 @@
         let socket = io.connect();
         
         $scope.stocks = [];
-        let stocks;
+        var stocks;
         $scope.priceData = [];
         $scope.text = '';
         $scope.errorMsg = null;
         $scope.startDate = Date.parse("2015-01-01");
         $scope.endDate = Date.parse("2015-01-29");
-        let cleanData = [];
+        var cleanData = [];
         let baseAPIstart = "https://www.quandl.com/api/v3/datasets/WIKI/";
         let baseAPIend = "/data.json?start_date=2016-01-01&end_date=2016-01-29&column_index=4&exclude_column_names=true&order=asc&api_key=";
         let APIkey = "FA9U87SHeUggkweQ-hdU"
-
               socket.on('connect', function () {
                   console.log("Client connect");
          //socket.emit("renderChart", null);
@@ -41,7 +40,7 @@
             $scope.stocks[x] = stock;
              $scope.$apply();
               console.log($scope.stocks);
-            socket.emit("renderChart");
+            $scope.renderStocks();
           }
         });
         
@@ -66,8 +65,7 @@
                       
         $scope.stocks.splice($scope.stocks.indexOf(stock), 1);
          $scope.$apply(); 
-         console.log($scope.stocks);
-        socket.emit("renderChart");
+       $scope.renderStocks();
           }
         });
         
@@ -87,8 +85,8 @@
            // console.log(stocks + "---" + stocks.length);
            cleanData = [];
            stocks = $scope.stocks;
-            for(let i = 0; i < stocks.length; i++){
-                 var theStock = stocks[i];
+            for(let stockNum = 0; stockNum < stocks.length; stockNum++){
+                 let theStock = stocks[stockNum];
                 console.log(baseAPIstart + theStock + baseAPIend + APIkey);
             //console.log("Stock: " + theStock);
             $.ajax({
@@ -98,53 +96,56 @@
                 var stockDatums = doc.dataset_data.data;
                 //console.log(theStock + ": " + stockDatums);
             if(cleanData.length == 0) { //First time through, with no dates yet in the dataset. Push date and price.
-               for(let j = 0; j < stockDatums.length; j++) {
-                  cleanData[j] = [new Date(stockDatums[j][0]), stockDatums[j][1]];
-                  console.log("Case A: " + cleanData[j]);
-            if((i >= (stocks.length - 1)) && (j == stockDatums.length-1)){
+               for(let dataPoint = 0; dataPoint < stockDatums.length; dataPoint++) {
+                  cleanData[dataPoint] = [new Date(stockDatums[dataPoint][0])];
+                  cleanData[dataPoint][1] = stockDatums[dataPoint][1];
+                 // console.log("Case A: " + cleanData[j]);
+            if((stockNum >= (stocks.length - 1)) && (dataPoint == stockDatums.length-1)){
            console.log("NORMALIZING CASE 1");
            normalizeData();
          }
                }
             } else { //subsequent times through, where the date may overlap. Only push the price.
-               for(let j = 0; j < stockDatums.length; j++) {
-                   let date = new Date(stockDatums[j][0]).getTime();
-                   let dateIndex;
+               for(let dataPoint = 0; dataPoint < stockDatums.length; dataPoint++) {
+                   let date = new Date(stockDatums[dataPoint][0]).getTime();
+                   //console.log(stockDatums[dataPoint][0] + " becomes " + date);
+                   var dateIndex;
                    for(let k = 0; k < cleanData.length; k++){
                        //console.log("cleanData[k]: " + cleanData[k]);
                        if(cleanData[k][0].getTime() == date){
                            dateIndex = k;
                        }
                    }
-                  if(dateIndex && cleanData[dateIndex].length <= $scope.stocks.length) {
-                     cleanData[dateIndex][i+1] = stockDatums[j][1];
-                     console.log("Case B: " + cleanData[dateIndex]);
+                  if(dateIndex) {
+                     cleanData[dateIndex][stockNum+1] = stockDatums[dataPoint][1];
+                     //console.log("Case B: " + cleanData[dateIndex]);
                   }
                   else{ //new dates on subsequent iterations
-                      if(!dateIndex){
-                        let k = cleanData.length;
-                        cleanData[k] = [new Date(stockDatums[j][0])];
-                        cleanData[k][i+1] = stockDatums[j][i];
-                        for(let l = 1; l < i; l++){
-                            cleanData[k][l] = null;
+                        let endIndex = cleanData.length;
+                        console.log("BEFORE: " + cleanData[endIndex]);
+                        cleanData[endIndex] = [new Date(stockDatums[dataPoint][0])];
+                        cleanData[endIndex][stockNum+1] = stockDatums[dataPoint][stockNum+1];
+                         console.log("AFTER: " + cleanData[endIndex]);
+                        for(let fillerIndex = 1; fillerIndex < stockNum+1; fillerIndex++){
+                            cleanData[endIndex][fillerIndex] = null;
                         }
-                        console.log("Case C: " + cleanData[k]);
-                      }
+                       // console.log("Case C: " + cleanData[k]);
                   }
-                          if((i >= stocks.length - 1) && (j == stockDatums.length-1)){
-           console.log("NORMALIZING CASE 2");
+                          if((stockNum >= stocks.length - 1) && (dataPoint == stockDatums.length-1)){
+          // console.log("NORMALIZING CASE 2");
            normalizeData();
          }
                }
             }
-         }, error: function (request, textStatus, errorThrown) { 
-            for(let j = 0; j < cleanData.length; j++){
+         }, error: function (request, textStatus, error) { 
+            for(let dataPoint = 0; dataPoint < cleanData.length; dataPoint++){
+                console.log(error);;
                  //console.log("CLEAN DATA BEFORE: " + cleanData[j]);
-               cleanData[j][i] = null;
+               cleanData[dataPoint][stockNum] = null;
                 //console.log("CLEAN DATA AFTER: " + cleanData[j]);
-                 if((i >= stocks.length - 1) && (j == cleanData.length-1)){
+                 if((stockNum >= stocks.length - 1) && (dataPoint == cleanData.length-1)){
            //console.log("CLEANDATA: " + cleanData);
-           console.log("NORMALIZING CASE 3");
+          // console.log("NORMALIZING CASE 3");
            normalizeData();
          }
             }
@@ -153,15 +154,15 @@
         }
         
                 function normalizeData(){   // ensure the proper number of columns
-              for(let j = 0; j < cleanData.length; j++) {
+              for(let x = 0; x < cleanData.length; x++) {
                 //console.log("COMPARE: " + cleanData[j].length + "---" + stocks.length);
                  /* while(cleanData[j].length <  stocks.length) {
                      cleanData[j].push(null);
-                  }*/
-                     while(cleanData[j] > stocks.length){
-                       cleanData[j].pop();
                   }
-                  if(j == cleanData.length-1){
+                     while(cleanData[x] > stocks.length){
+                       cleanData[x].pop();
+                  }*/
+                  if(x == cleanData.length-1){
                     console.log("DRAWING CHART");
                     drawChart();
                   }
@@ -177,7 +178,7 @@
                console.log("TIME TO DRAW");
                for(let j = 0; j < cleanData.length; j++){
                  if(cleanData[j].length -1 == stocks.length){
-                         //console.log("Adding row: " + cleanData[j]);
+                         console.log("Adding row: " + cleanData[j]);
                         data.addRow(cleanData[j]); 
                  }
                  if(j == cleanData.length-1){
