@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/css/main.css">
    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+   <script></script>
     <script>
     'use strict';
     //test url: https://www.quandl.com/api/v3/datasets/WIKI/FB/data.json?start_date=2015-01-01&end_date=2016-01-01&column_index=4&exclude_column_names=true&order=asc&api_key=FA9U87SHeUggkweQ-hdU
@@ -84,100 +85,95 @@
         $scope.renderStocks = function renderStocks(){
            // console.log(stocks + "---" + stocks.length);
            cleanData = [];
-           stocks = $scope.stocks;
-            for(let stockNum = 0; stockNum < stocks.length; stockNum++){
-                 let theStock = stocks[stockNum];
-                console.log(baseAPIstart + theStock + baseAPIend + APIkey);
-            //console.log("Stock: " + theStock);
-            $.ajax({
+           let stocksTraversed = 0;
+         getData();
+           
+           function getData(){
+               for(let stockNum = 0; stockNum < $scope.stocks.length; stockNum++){
+               //let stockNum = stocks.indexOf(stock);
+               let theStock = $scope.stocks[stockNum];
+                     $.ajax({
               url: baseAPIstart + theStock + baseAPIend + APIkey,
               method: "GET",
               success: function(doc) {
-                var stockDatums = doc.dataset_data.data;
+                let stockDatums = doc.dataset_data.data;
                 //console.log(theStock + ": " + stockDatums);
             if(cleanData.length == 0) { //First time through, with no dates yet in the dataset. Push date and price.
                for(let dataPoint = 0; dataPoint < stockDatums.length; dataPoint++) {
                   cleanData[dataPoint] = [new Date(stockDatums[dataPoint][0])];
-                  cleanData[dataPoint][1] = stockDatums[dataPoint][1];
-                 // console.log("Case A: " + cleanData[j]);
-            if((stockNum >= (stocks.length - 1)) && (dataPoint == stockDatums.length-1)){
-           console.log("NORMALIZING CASE 1");
-           normalizeData();
-         }
+                  cleanData[dataPoint][stockNum+1] = stockDatums[dataPoint][stockNum+1];
+                   if(dataPoint >= stockDatums.length - 1){
+                    console.log(stocksTraversed);
+                    if(stocksTraversed < $scope.stocks.length-1){
+                        stocksTraversed++;
+                    }
+                    else{
+                      console.log(cleanData);
+                      drawChart();   
+                    }
+            }
                }
             } else { //subsequent times through, where the date may overlap. Only push the price.
                for(let dataPoint = 0; dataPoint < stockDatums.length; dataPoint++) {
                    let date = new Date(stockDatums[dataPoint][0]).getTime();
-                   //console.log(stockDatums[dataPoint][0] + " becomes " + date);
-                   var dateIndex;
+                   let dateIndex;
                    for(let k = 0; k < cleanData.length; k++){
-                       //console.log("cleanData[k]: " + cleanData[k]);
                        if(cleanData[k][0].getTime() == date){
                            dateIndex = k;
                        }
                    }
                   if(dateIndex) {
                      cleanData[dateIndex][stockNum+1] = stockDatums[dataPoint][1];
-                     //console.log("Case B: " + cleanData[dateIndex]);
                   }
                   else{ //new dates on subsequent iterations
                         let endIndex = cleanData.length;
-                        console.log("BEFORE: " + cleanData[endIndex]);
                         cleanData[endIndex] = [new Date(stockDatums[dataPoint][0])];
                         cleanData[endIndex][stockNum+1] = stockDatums[dataPoint][stockNum+1];
-                         console.log("AFTER: " + cleanData[endIndex]);
                         for(let fillerIndex = 1; fillerIndex < stockNum+1; fillerIndex++){
                             cleanData[endIndex][fillerIndex] = null;
                         }
-                       // console.log("Case C: " + cleanData[k]);
                   }
-                          if((stockNum >= stocks.length - 1) && (dataPoint == stockDatums.length-1)){
-          // console.log("NORMALIZING CASE 2");
-           normalizeData();
-         }
+                if(dataPoint >= stockDatums.length - 1){
+                    console.log(stocksTraversed);
+                    if(stocksTraversed < $scope.stocks.length-1){
+                        stocksTraversed++;
+                    }
+                    else{
+                      console.log(cleanData);
+                      drawChart();   
+                    }
+            }
                }
             }
          }, error: function (request, textStatus, error) { 
             for(let dataPoint = 0; dataPoint < cleanData.length; dataPoint++){
-                console.log(error);;
-                 //console.log("CLEAN DATA BEFORE: " + cleanData[j]);
-               cleanData[dataPoint][stockNum] = null;
-                //console.log("CLEAN DATA AFTER: " + cleanData[j]);
-                 if((stockNum >= stocks.length - 1) && (dataPoint == cleanData.length-1)){
-           //console.log("CLEANDATA: " + cleanData);
-          // console.log("NORMALIZING CASE 3");
-           normalizeData();
-         }
+                console.log(error);
+               cleanData[dataPoint][stockNum+1] = null;
+               if(dataPoint >= cleanData.length - 1){
+                    if(stocksTraversed < $scope.stocks.length-1){
+                        stocksTraversed++;
+                    }
+                    else{
+                      console.log(cleanData);
+                      drawChart();   
+                    }
+            }
             }
          }});
-      }
-        }
-        
-                function normalizeData(){   // ensure the proper number of columns
-              for(let x = 0; x < cleanData.length; x++) {
-                //console.log("COMPARE: " + cleanData[j].length + "---" + stocks.length);
-                 /* while(cleanData[j].length <  stocks.length) {
-                     cleanData[j].push(null);
-                  }
-                     while(cleanData[x] > stocks.length){
-                       cleanData[x].pop();
-                  }*/
-                  if(x == cleanData.length-1){
-                    console.log("DRAWING CHART");
-                    drawChart();
-                  }
-        }
-      function drawChart(){
-        console.log(cleanData);
+           }
+           }
+           
+        function drawChart(){
+            console.log(cleanData);
             var data = new google.visualization.DataTable();
             data.addColumn("date", 'Date');
-           for(let i = 0; i < stocks.length; i++){
-             data.addColumn("number", stocks[i]);
+           for(let i = 0; i < $scope.stocks.length; i++){
+             data.addColumn("number", $scope.stocks[i]);
              //console.log("Column added: " + stocks[i]);
-             if(i == stocks.length - 1){
+             if(i == $scope.stocks.length - 1){
                console.log("TIME TO DRAW");
                for(let j = 0; j < cleanData.length; j++){
-                 if(cleanData[j].length -1 == stocks.length){
+                 if(cleanData[j].length -1 == $scope.stocks.length){
                          console.log("Adding row: " + cleanData[j]);
                         data.addRow(cleanData[j]); 
                  }
@@ -209,6 +205,23 @@
       }
         }
           }
+        
+        
+                function normalizeData(){   // ensure the proper number of columns
+              for(let x = 0; x < cleanData.length; x++) {
+                //console.log("COMPARE: " + cleanData[j].length + "---" + stocks.length);
+                 /* while(cleanData[j].length <  stocks.length) {
+                     cleanData[j].push(null);
+                  }
+                     while(cleanData[x] > stocks.length){
+                       cleanData[x].pop();
+                  }*/
+                  if(x == cleanData.length-1){
+                    console.log("DRAWING CHART");
+                    drawChart();
+                  }
+              }
+        }
     </script>
     <!-- <script src="/js/controllers/StockController.js"></script> -->
   </head>
