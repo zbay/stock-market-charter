@@ -23,7 +23,6 @@
         $scope.errorMsg = null;
         $scope.startDate = Date.parse("2015-01-01");
         $scope.endDate = Date.parse("2015-01-29");
-        var cleanData = [];
         let baseAPIstart = "https://www.quandl.com/api/v3/datasets/WIKI/";
         let baseAPIend = "/data.json?start_date=2016-01-01&end_date=2016-01-29&column_index=4&exclude_column_names=true&order=asc&api_key=";
         let APIkey = "FA9U87SHeUggkweQ-hdU"
@@ -84,7 +83,7 @@
         
         $scope.renderStocks = function renderStocks(){
            // console.log(stocks + "---" + stocks.length);
-           cleanData = [];
+           let cleanData = [];
            let stocksTraversed = 0;
          getData();
            
@@ -104,17 +103,18 @@
                   cleanData[dataPoint][stockNum+1] = stockDatums[dataPoint][stockNum+1];
                    if(dataPoint >= stockDatums.length - 1){
                     console.log(stocksTraversed);
+                    //console.log(cleanData);
                     if(stocksTraversed < $scope.stocks.length-1){
                         stocksTraversed++;
                     }
                     else{
-                      console.log(cleanData);
+                      //console.log(cleanData);
                       drawChart();   
                     }
             }
                }
             } else { //subsequent times through, where the date may overlap. Only push the price.
-               for(let dataPoint = 0; dataPoint < stockDatums.length; dataPoint++) {
+               for(let dataPoint = 0; dataPoint < stockDatums.length; dataPoint++){
                    let date = new Date(stockDatums[dataPoint][0]).getTime();
                    let dateIndex;
                    for(let k = 0; k < cleanData.length; k++){
@@ -124,6 +124,17 @@
                    }
                   if(dateIndex) {
                      cleanData[dateIndex][stockNum+1] = stockDatums[dataPoint][1];
+                    if(dataPoint >= stockDatums.length - 1){
+                    console.log(stocksTraversed);
+                     console.log(cleanData);
+                    if(stocksTraversed < $scope.stocks.length-1){
+                        stocksTraversed++;
+                    }
+                    else{
+                      console.log(cleanData);
+                      drawChart();     
+                    }
+            }
                   }
                   else{ //new dates on subsequent iterations
                         let endIndex = cleanData.length;
@@ -131,18 +142,19 @@
                         cleanData[endIndex][stockNum+1] = stockDatums[dataPoint][stockNum+1];
                         for(let fillerIndex = 1; fillerIndex < stockNum+1; fillerIndex++){
                             cleanData[endIndex][fillerIndex] = null;
-                        }
-                  }
-                if(dataPoint >= stockDatums.length - 1){
+                    if(dataPoint >= stockDatums.length - 1 && fillerIndex >= stockNum+1){
                     console.log(stocksTraversed);
+                     console.log(cleanData);
                     if(stocksTraversed < $scope.stocks.length-1){
                         stocksTraversed++;
                     }
                     else{
-                      console.log(cleanData);
-                      drawChart();   
+                      //console.log(cleanData);
+                       drawChart();  
                     }
             }
+                        }
+                  }
                }
             }
          }, error: function (request, textStatus, error) { 
@@ -150,12 +162,14 @@
                 console.log(error);
                cleanData[dataPoint][stockNum+1] = null;
                if(dataPoint >= cleanData.length - 1){
+                   console.log(stocksTraversed);
+                   console.log(cleanData);
                     if(stocksTraversed < $scope.stocks.length-1){
                         stocksTraversed++;
                     }
                     else{
                       console.log(cleanData);
-                      drawChart();   
+                      drawChart();  
                     }
             }
             }
@@ -205,23 +219,6 @@
       }
         }
           }
-        
-        
-                function normalizeData(){   // ensure the proper number of columns
-              for(let x = 0; x < cleanData.length; x++) {
-                //console.log("COMPARE: " + cleanData[j].length + "---" + stocks.length);
-                 /* while(cleanData[j].length <  stocks.length) {
-                     cleanData[j].push(null);
-                  }
-                     while(cleanData[x] > stocks.length){
-                       cleanData[x].pop();
-                  }*/
-                  if(x == cleanData.length-1){
-                    console.log("DRAWING CHART");
-                    drawChart();
-                  }
-              }
-        }
     </script>
     <!-- <script src="/js/controllers/StockController.js"></script> -->
   </head>

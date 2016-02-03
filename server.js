@@ -58,6 +58,8 @@ io.on('connection', function (socket) {
           newStock.save(function(err, msg){
         if(msg && !err){
           //broadcast('stock', stock);
+          
+          
           broadcast("newStockSuccess", stock);
         }
       });
