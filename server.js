@@ -2,6 +2,7 @@
 var http = require('http');
 var path = require('path');
 
+var request = require("request");
 var async = require('async');
 var socketio = require('socket.io');
 var express = require('express');
@@ -52,7 +53,27 @@ io.on('connection', function (socket) {
       if (!stock.length){
        return; 
       }
-    //Add validation of stock symbol?
+                      request({
+                url: "https://www.quandl.com/api/v3/datasets/WIKI/" + stock + "/data.json?start_date=2016-01-01&end_date=2016-01-01&column_index=4&exclude_column_names=true&order=asc&api_key=FA9U87SHeUggkweQ-hdU",
+                method: "HEAD"}, //request params
+                function(error, response, body){
+                    if(error){
+                         console.log("Error: " + error);
+                    }
+                    else{
+                        var newStock = new Stock({"symbol": stock});
+                        newStock.save(function(err, msg){
+                        if(msg && !err && response.statusCode != 404){
+                        //broadcast('stock', stock);
+                     broadcast("newStockSuccess", stock);
+                     }
+                     else{
+                         socket.emit("deleteStock", stock);
+                     }
+                    });
+                }
+                });
+/*    //Add validation of stock symbol?
             var newStock = new Stock({"symbol": stock});
           newStock.save(function(err, msg){
         if(msg && !err){
@@ -61,9 +82,9 @@ io.on('connection', function (socket) {
           
           broadcast("newStockSuccess", stock);
         }
-      });
+      });*/
       
-    }); //socket on stock
+    }); //socket on new stock
     
       socket.on('stockDelete', function (stk) {
            console.log("Server stockDelete");
