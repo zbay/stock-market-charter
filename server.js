@@ -1,4 +1,3 @@
-
  'use strict';
 var http = require('http');
 var path = require('path');

@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/css/main.css">
    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+   <script type="text/javascript" src="/js/async.js"></script>
    <script></script>
     <script>
     'use strict';
@@ -17,7 +18,6 @@
         let socket = io.connect();
         
         $scope.stocks = [];
-        var stocks;
         $scope.priceData = [];
         $scope.text = '';
         $scope.errorMsg = null;
@@ -85,33 +85,33 @@
            // console.log(stocks + "---" + stocks.length);
            let cleanData = [];
            let stocksTraversed = 0;
-         getData();
+           getData();
+           console.log($scope.stocks);
            
            function getData(){
                for(let stockNum = 0; stockNum < $scope.stocks.length; stockNum++){
-               //let stockNum = stocks.indexOf(stock);
-               let theStock = $scope.stocks[stockNum];
+                let theStock = $scope.stocks[stockNum];
+                console.log("getting data? " + theStock);
                      $.ajax({
               url: baseAPIstart + theStock + baseAPIend + APIkey,
               method: "GET",
               success: function(doc) {
+                 //console.log(baseAPIstart + theStock + baseAPIend + APIkey);
                 let stockDatums = doc.dataset_data.data;
-                //console.log(theStock + ": " + stockDatums);
+                console.log(theStock + ": " + stockDatums);
             if(cleanData.length == 0) { //First time through, with no dates yet in the dataset. Push date and price.
                for(let dataPoint = 0; dataPoint < stockDatums.length; dataPoint++) {
                   cleanData[dataPoint] = [new Date(stockDatums[dataPoint][0])];
-                  cleanData[dataPoint][stockNum+1] = stockDatums[dataPoint][stockNum+1];
-                   if(dataPoint >= stockDatums.length - 1){
-                    console.log(stocksTraversed);
-                    //console.log(cleanData);
+                  cleanData[dataPoint][stockNum+1] = stockDatums[dataPoint][1];
+                  if(dataPoint >= stockDatums.length - 1){
                     if(stocksTraversed < $scope.stocks.length-1){
                         stocksTraversed++;
                     }
                     else{
-                      //console.log(cleanData);
                       drawChart();   
                     }
             }
+                  //console.log(cleanData);
                }
             } else { //subsequent times through, where the date may overlap. Only push the price.
                for(let dataPoint = 0; dataPoint < stockDatums.length; dataPoint++){
@@ -124,36 +124,28 @@
                    }
                   if(dateIndex) {
                      cleanData[dateIndex][stockNum+1] = stockDatums[dataPoint][1];
-                    if(dataPoint >= stockDatums.length - 1){
-                    console.log(stocksTraversed);
-                     console.log(cleanData);
+                                       if(dataPoint >= stockDatums.length - 1){
                     if(stocksTraversed < $scope.stocks.length-1){
                         stocksTraversed++;
                     }
                     else{
-                      console.log(cleanData);
-                      drawChart();     
+                      drawChart();   
                     }
             }
+                     //console.log(cleanData);
                   }
                   else{ //new dates on subsequent iterations
                         let endIndex = cleanData.length;
                         cleanData[endIndex] = [new Date(stockDatums[dataPoint][0])];
                         cleanData[endIndex][stockNum+1] = stockDatums[dataPoint][stockNum+1];
-                        for(let fillerIndex = 1; fillerIndex < stockNum+1; fillerIndex++){
-                            cleanData[endIndex][fillerIndex] = null;
-                    if(dataPoint >= stockDatums.length - 1 && fillerIndex >= stockNum+1){
-                    console.log(stocksTraversed);
-                     console.log(cleanData);
+                    if(dataPoint >= stockDatums.length - 1){
                     if(stocksTraversed < $scope.stocks.length-1){
                         stocksTraversed++;
                     }
                     else{
-                      //console.log(cleanData);
-                       drawChart();  
+                      drawChart();   
                     }
             }
-                        }
                   }
                }
             }
@@ -161,15 +153,12 @@
             for(let dataPoint = 0; dataPoint < cleanData.length; dataPoint++){
                 console.log(error);
                cleanData[dataPoint][stockNum+1] = null;
-               if(dataPoint >= cleanData.length - 1){
-                   console.log(stocksTraversed);
-                   console.log(cleanData);
+                if(dataPoint >= stockDatums.length - 1){
                     if(stocksTraversed < $scope.stocks.length-1){
                         stocksTraversed++;
                     }
                     else{
-                      console.log(cleanData);
-                      drawChart();  
+                      drawChart();   
                     }
             }
             }
@@ -177,8 +166,8 @@
            }
            }
            
-        function drawChart(){
-            console.log(cleanData);
+        function drawChart(irrelevant){
+            console.log("drawChart: " + cleanData);
             var data = new google.visualization.DataTable();
             data.addColumn("date", 'Date');
            for(let i = 0; i < $scope.stocks.length; i++){
