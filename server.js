@@ -53,8 +53,6 @@ io.on('connection', function (socket) {
       if (!stock.length){
        return; 
       }
-      
-      
                       request({
                 url: "https://www.quandl.com/api/v3/datasets/WIKI/" + stock + "/data.json?start_date=2016-01-01&end_date=2016-01-01&column_index=4&exclude_column_names=true&order=asc&api_key=FA9U87SHeUggkweQ-hdU",
                 method: "HEAD"}, //request params
@@ -73,35 +71,23 @@ io.on('connection', function (socket) {
                     });
                         }
                         else{
-                         socket.emit("stockFailed", stock);
+                            console.log("404ing!");
+                         socket.emit("stockDeleteSuccess", {"stock": stock, "msg": "\"" + stock + "\" was unsuccessfully added to the chart. Try a different stock symbol."});
                         }
                 }
                 });
       
     }); //socket on new stock
     
-      socket.on('stockDelete', function (stk) {
+      socket.on('stockDelete', function (data) {
            console.log("Server stockDelete");
-    var stock = String(stk || '');
+    var stock = String(data.stock || '');
       if (!stock){
        return; 
       }
       Stock.remove({"symbol": stock}, function(err, msg){
         if(msg && !err){
-         broadcast('stockDeleteSuccess', stock);
-        }
-      });
-    });
-    
-          socket.on('stockFailed', function (stk) {
-           console.log("Server stockFailed");
-    var stock = String(stk || '');
-      if (!stock){
-       return; 
-      }
-      Stock.remove({"symbol": stock}, function(err, msg){
-        if(msg && !err){
-         socket.emit('stockFailureComplete', stock);
+         broadcast('stockDeleteSuccess', {"stock": stock, "msg": data.msg});
         }
       });
     });

@@ -19,9 +19,7 @@
             if(mm<10) {
                 mm='0'+mm;
             } 
-
             $scope.endDate = yyyy+'-'+mm+'-'+dd;
-        console.log($scope.startDate + "--" + $scope.endDate);
         let baseAPIstart = "https://www.quandl.com/api/v3/datasets/WIKI/";
         let APIkey = "FA9U87SHeUggkweQ-hdU"
               socket.on('connect', function () {
@@ -32,22 +30,11 @@
               console.log("Client newStock");
                  $scope.actionMsg = "Stock successfully added!";
           if($scope.stocks.indexOf(stock) == -1){
-              console.log("Adding stock?");
               let x = $scope.stocks.length;
             $scope.stocks[x] = stock;
              $scope.$apply();
-              console.log($scope.stocks);
             $scope.renderStocks();
           }
-        });
-        
-        socket.on("stockFailureComplete", function(stock){
-                      if($scope.stocks.indexOf(stock) > -1){
-                           $scope.stocks.splice($scope.stocks.indexOf(stock), 1);
-                      }
-              console.log("Client stockFailureComplete");
-             $scope.actionMsg = "\"" + stock + "\" failed to join the list because it's not a valid symbol. Try again";         
-         $scope.$apply(); 
         });
         
         socket.on('stock', function (stock) {
@@ -62,15 +49,18 @@
           $scope.renderStocks();
         });
         
-        socket.on('stockDeleteSuccess', function (stock) {
-          if($scope.stocks.indexOf(stock) > -1){
+        socket.on('stockDeleteSuccess', function (data) {
+          $scope.actionMsg = data.msg;
+          $scope.$apply(); 
+          if($scope.stocks.indexOf(data.stock) > -1){
               console.log("Client stockDeleteSuccess");
-             $scope.actionMsg = "\"" + stock + "\" was successfully deleted from the list of stocks.";         
-        $scope.stocks.splice($scope.stocks.indexOf(stock), 1);
-         $scope.$apply(); 
+             console.log("datamsg " + data.msg);
+        $scope.stocks.splice($scope.stocks.indexOf(data.stock), 1);
+         $scope.$apply();
        $scope.renderStocks();
           }
-        });
+        }
+        );
         
         $scope.send = function send() {
             console.log("Client Send");
@@ -81,7 +71,7 @@
         
         $scope.deleteStock = function deleteStock(stock){
             console.log("Client DeleteStock");
-          socket.emit('stockDelete', stock);
+          socket.emit('stockDelete', {"stock": stock, "msg": "\"" + stock + "\" was successfully deleted from the chart."});
         }
         
         $scope.renderStocks = function renderStocks(){
