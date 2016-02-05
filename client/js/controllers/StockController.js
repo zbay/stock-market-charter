@@ -8,7 +8,7 @@
         $scope.text = '';
         $scope.actionMsg = null;
         $scope.startDate = "2015-01-01";
-        var apiKey;
+        $scope.apiKey =null;
         var currentDate = new Date();
             var dd = currentDate.getDate();
             var mm = currentDate.getMonth()+1;
@@ -22,11 +22,9 @@
             $scope.endDate = yyyy+'-'+mm+'-'+dd;
         let baseAPIstart = "https://www.quandl.com/api/v3/datasets/WIKI/";
               socket.on('connect', function () {
-                  console.log("Client connect");
         });
         
         socket.on("newStockSuccess", function(data){
-              console.log("Client newStock");
                  $scope.actionMsg = "Stock successfully added!";
           if($scope.stocks.indexOf(data.stock) == -1){
               let x = $scope.stocks.length;
@@ -44,7 +42,6 @@
         });
         
         socket.on('renderChart', function(quandlKey){
-             console.log("Client renderChart");
           $scope.renderStocks(quandlKey);
         });
         
@@ -52,8 +49,6 @@
           $scope.actionMsg = data.msg;
           $scope.$apply(); 
           if($scope.stocks.indexOf(data.stock) > -1){
-              console.log("Client stockDeleteSuccess");
-             console.log("datamsg " + data.msg);
         $scope.stocks.splice($scope.stocks.indexOf(data.stock), 1);
          $scope.$apply();
        $scope.renderStocks();
@@ -62,20 +57,18 @@
         );
         
         $scope.send = function send() {
-            console.log("Client Send");
             $scope.text = $scope.text.replace(new RegExp(/(;)|(\')|(\")/g), "");
           socket.emit('newStock', $scope.text);
           $scope.text = '';
         };
         
         $scope.deleteStock = function deleteStock(stock){
-            console.log("Client DeleteStock");
           socket.emit('stockDelete', {"stock": stock, "msg": "\"" + stock + "\" was successfully deleted from the chart."});
         }
         
         $scope.renderStocks = function renderStocks(quandlKey){
             if(quandlKey){
-                apiKey = quandlKey
+                $scope.apiKey = quandlKey
             }
            let cleanData = [];
            let stocksTraversed = 0;
@@ -88,10 +81,9 @@
               
               url: baseAPIstart + theStock + 
                 "/data.json?start_date=" + $scope.startDate + "&end_date=" + $scope.endDate +
-                "&column_index=4&exclude_column_names=true&order=asc&api_key=" + apiKey,
+                "&column_index=4&exclude_column_names=true&order=asc&api_key=" + $scope.apiKey,
               method: "GET",
               success: function(doc, textStatus, xhr) {
-                 // console.log(xhr.status);
                 let stockDatums = doc.dataset_data.data;
             if(cleanData.length == 0) { //First time through, with no dates yet in the dataset. Push date and price.
                for(let dataPoint = 0; dataPoint < stockDatums.length; dataPoint++) {

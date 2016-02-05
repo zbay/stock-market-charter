@@ -28,7 +28,6 @@ router.use(express.static(path.resolve(__dirname, 'client')));
 var sockets = [];
 
 io.on('connection', function (socket) {
-     console.log("Server connection: " + process.env.QUANDL_KEY);
     Stock.find({}, function(err, doc){
         for(let i = 0; i < doc.length; i++){
             socket.emit("stock", doc[i].symbol);
@@ -46,7 +45,6 @@ io.on('connection', function (socket) {
     });
 
     socket.on('newStock', function (stk) {
-         console.log("Server newStock: " + stk);
       var stock = String(stk.toUpperCase() || '');
     
       if (!stock.length){
@@ -71,7 +69,6 @@ io.on('connection', function (socket) {
                     });
                         }
                         else{
-                            console.log("404ing!");
                          socket.emit("stockDeleteSuccess", {"stock": stock,
                          "msg": "\"" + stock + "\" was unsuccessfully added to the chart. Try a different stock symbol."});
                         }
@@ -80,7 +77,6 @@ io.on('connection', function (socket) {
     }); //socket on new stock
     
       socket.on('stockDelete', function (data) {
-           console.log("Server stockDelete");
     var stock = String(data.stock || '');
       if (!stock){
        return; 
