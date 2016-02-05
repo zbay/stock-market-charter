@@ -12,9 +12,8 @@ var mongoose = require('mongoose');
 var Stock = require("./dbmodels/stock.js");
 var db = mongoose.connection;
 
-mongoose.connect('mongodb://localhost:27017/stock-market-charter', function (err, db){
-//mongoose.connect(process.env.MONGOLAB_URI, function (err, db)
-//
+//mongoose.connect('mongodb://localhost:27017/stock-market-charter', function (err, db){
+mongoose.connect(process.env.MONGOLAB_URI, function (err, db){
  if (err) {
    console.log(err);
       throw new Error('Database failed to connect!');
