@@ -1,100 +1,206 @@
-      function StockController($scope) {
-        var socket = io.connect();
+    'use strict';
+    //test url: https://www.quandl.com/api/v3/datasets/WIKI/FB/data.json?start_date=2015-01-01&end_date=2016-01-01&column_index=4&exclude_column_names=true&order=asc&api_key=FA9U87SHeUggkweQ-hdU
+           google.load("visualization", "1", {packages:["corechart"]});
+        function StockController($scope) {
+        let socket = io.connect();
         
         $scope.stocks = [];
-       // $scope.pric
-        $scope.text = '';
-        $scope.errorMsg = null;
-        $scope.startDate = Date.parse("2015-01-01");
-        $scope.endDate = Date.parse("2016-01-29");
         $scope.priceData = [];
-        var baseAPIstart = "https://www.quandl.com/api/v3/datasets/WIKI/";
-        var baseAPIend = "/data.json?column_index=4&exclude_column_names=true&order=asc&api_key=";
-        var APIkey = "FA9U87SHeUggkweQ-hdU"
+        $scope.text = '';
+        $scope.actionMsg = null;
+        $scope.startDate = "2015-01-01";
+        var currentDate = new Date();
+            var dd = currentDate.getDate();
+            var mm = currentDate.getMonth()+1; //January is 0!
+            var yyyy = currentDate.getFullYear();
+            if(dd<10) {
+                dd='0'+dd;
+            } 
+            if(mm<10) {
+                mm='0'+mm;
+            } 
 
-        socket.on('connect', function () {
-         $scope.renderStocks();
+            $scope.endDate = yyyy+'-'+mm+'-'+dd;
+        console.log($scope.startDate + "--" + $scope.endDate);
+        let baseAPIstart = "https://www.quandl.com/api/v3/datasets/WIKI/";
+        let APIkey = "FA9U87SHeUggkweQ-hdU"
+              socket.on('connect', function () {
+                  console.log("Client connect");
         });
-
+        
+        socket.on("newStockSuccess", function(stock){
+              console.log("Client newStock");
+                 $scope.actionMsg = "Stock successfully added!";
+          if($scope.stocks.indexOf(stock) == -1){
+              console.log("Adding stock?");
+              let x = $scope.stocks.length;
+            $scope.stocks[x] = stock;
+             $scope.$apply();
+              console.log($scope.stocks);
+            $scope.renderStocks();
+          }
+        });
+        
+        socket.on("stockFailureComplete", function(stock){
+                      if($scope.stocks.indexOf(stock) > -1){
+                           $scope.stocks.splice($scope.stocks.indexOf(stock), 1);
+                      }
+              console.log("Client stockFailureComplete");
+             $scope.actionMsg = "\"" + stock + "\" failed to join the list because it's not a valid symbol. Try again";         
+         $scope.$apply(); 
+        });
+        
         socket.on('stock', function (stock) {
-          $scope.errorMsg = null;
-          $scope.stocks.push(stock); 
+          if($scope.stocks.indexOf(stock) == -1){
+            $scope.stocks[$scope.stocks.length] = stock;  
+          }
           $scope.$apply();
         });
         
         socket.on('renderChart', function(){
+             console.log("Client renderChart");
           $scope.renderStocks();
         });
         
-        socket.on('stockDelete', function (stock) {
-          
+        socket.on('stockDeleteSuccess', function (stock) {
           if($scope.stocks.indexOf(stock) > -1){
-             $scope.errorMsg = null;
-                      
+              console.log("Client stockDeleteSuccess");
+             $scope.actionMsg = "\"" + stock + "\" was successfully deleted from the list of stocks.";         
         $scope.stocks.splice($scope.stocks.indexOf(stock), 1);
-              $scope.$apply(); 
-          }
-          else{
-            $scope.errorMsg = "That stock symbol is either invalid or redundant. Try again!";
+         $scope.$apply(); 
+       $scope.renderStocks();
           }
         });
-
+        
         $scope.send = function send() {
-          socket.emit('stock', $scope.text);
+            console.log("Client Send");
+            $scope.text = $scope.text.replace(new RegExp(/(;)|(\')|(\")/g), "");
+          socket.emit('newStock', $scope.text);
           $scope.text = '';
         };
         
         $scope.deleteStock = function deleteStock(stock){
+            console.log("Client DeleteStock");
           socket.emit('stockDelete', stock);
         }
         
         $scope.renderStocks = function renderStocks(){
-            var stockData = [];
-           // google.load('visualization', '1.0', {'packages':['line']});
-            //google.setOnLoadCallback($scope.drawChart);
-            $scope.getData($scope.drawChart());
-            
-        }
-        
-        $scope.getData = function getData(callback){   
-          for(var i = 0; i < $scope.stocks.length; i++){
-            var theStock = $scope.stocks[i];
-            $.ajax({
+           let cleanData = [];
+           let stocksTraversed = 0;
+           getData();
+           
+           function getData(){
+               for(let stockNum = 0; stockNum < $scope.stocks.length; stockNum++){
+                let theStock = $scope.stocks[stockNum];
+                     $.ajax({
+              
+              url: baseAPIstart + theStock + 
+                "/data.json?start_date=" + $scope.startDate + "&end_date=" + $scope.endDate +
+                "&column_index=4&exclude_column_names=true&order=asc&api_key=" + APIkey,
               method: "GET",
-              url: baseAPIstart + theStock + baseAPIend + APIkey,
-              success: function(doc){
-                console.log(doc);
-                $scope.priceData.push(doc.data);
-              }
-            });
-            
-          callback();
-          }
-        }
-        
-        $scope.drawChart = function drawChart(){
-          console.log("drawing chart?");
+              success: function(doc, textStatus, xhr) {
+                 // console.log(xhr.status);
+                let stockDatums = doc.dataset_data.data;
+            if(cleanData.length == 0) { //First time through, with no dates yet in the dataset. Push date and price.
+               for(let dataPoint = 0; dataPoint < stockDatums.length; dataPoint++) {
+                  cleanData[dataPoint] = [new Date(stockDatums[dataPoint][0])];
+                  cleanData[dataPoint][stockNum+1] = stockDatums[dataPoint][1];
+                  if(dataPoint >= stockDatums.length - 1){
+                    if(stocksTraversed < $scope.stocks.length-1){
+                        stocksTraversed++;
+                    }
+                    else{
+                      drawChart();   
+                    }
+            }
+               }
+            } else { //subsequent times through, where the date may overlap. Only push the price.
+               for(let dataPoint = 0; dataPoint < stockDatums.length; dataPoint++){
+                   let date = new Date(stockDatums[dataPoint][0]).getTime();
+                   let dateIndex;
+                   for(let k = 0; k < cleanData.length; k++){
+                       if(cleanData[k][0].getTime() == date){
+                           dateIndex = k;
+                       }
+                   }
+                  if(dateIndex) {
+                     cleanData[dateIndex][stockNum+1] = stockDatums[dataPoint][1];
+                                       if(dataPoint >= stockDatums.length - 1){
+                    if(stocksTraversed < $scope.stocks.length-1){
+                        stocksTraversed++;
+                    }
+                    else{
+                      drawChart();   
+                    }
+            }
+                  }
+                  else{ //new dates on subsequent iterations
+                        let endIndex = cleanData.length;
+                        cleanData[endIndex] = [new Date(stockDatums[dataPoint][0])];
+                        cleanData[endIndex][stockNum+1] = stockDatums[dataPoint][stockNum+1];
+                    if(dataPoint >= stockDatums.length - 1){
+                    if(stocksTraversed < $scope.stocks.length-1){
+                        stocksTraversed++;
+                    }
+                    else{
+                      drawChart();   
+                    }
+            }
+                  }
+               }
+            }
+         }, error: function (request, textStatus, error) { 
+            for(let dataPoint = 0; dataPoint < cleanData.length; dataPoint++){
+                console.log("ERROR: " + error);
+               cleanData[dataPoint][stockNum+1] = null;
+                if(dataPoint >= cleanData.length - 1){
+                    if(stocksTraversed < $scope.stocks.length-1){
+                        stocksTraversed++;
+                    }
+                    else{
+                      drawChart();   
+                    }
+            }
+            }
+         }});
+           }
+           }
+           
+        function drawChart(){
             var data = new google.visualization.DataTable();
-            data.addColumn("date", "Date");
-           for(var i = 0; i < $scope.stocks.length; i++){
+            data.addColumn("date", 'Date');
+           for(let i = 0; i < $scope.stocks.length; i++){
              data.addColumn("number", $scope.stocks[i]);
+             if(i == $scope.stocks.length - 1){
+               for(let j = 0; j < cleanData.length; j++){
+                 if(cleanData[j].length -1 == $scope.stocks.length){
+                        data.addRow(cleanData[j]); 
+                 }
+                 if(j == cleanData.length-1){
+                   finishDrawing(data);
+                 }
+               }
+             }
         }
-        var localData = $scope.priceData.filter(function(datum){
-          return Date.parse(datum[0]) >= $scope.startDate && Date.parse(datum) <= $scope.endDate;
-        });
-        for(var i = 0; i < localData.length; i++){
-          var rowTemp = [];
-          for(var j = 0; j < $scope.stocks.length; j++){
-            rowTemp.push(localData[j][i]);
-          }
-          data.addRow(rowTemp);
-        }
-        var options = {'title':"Stock Prices Over Time",
+      }
+      function finishDrawing(data){
+                     var options = {'title':"Stock Prices Over Time",
                        'width':1000,
                        'height':500,
-                       'colors':["green", "red", 'blue', "orange", "purple", "black", "gray", "pink", "brown"],
-                       'vAxis': {'viewWindow': {'min':0.0}}};
-        var chart = new google.visualization.LineChart(document.getElementById('stockChart'));
-        chart.draw(data, options);
+                       'colors':['blue', 'green', 'purple', 'orange', 'black', 'red', 'gray'],
+                        'interpolateNulls': true,
+                         'vAxis': {
+                      'viewWindow': {
+                        'min':0
+                      }
+                     },
+                     'crosshair': { trigger: 'focus' }, 
+                     'hAxis':{
+                      'format': 'M/d/yy',
+                     }
+                      };
+          var chart = new google.visualization.LineChart(document.getElementById('stockChart'));
+        chart.draw(data, options); 
       }
-      }
+        }
+          }

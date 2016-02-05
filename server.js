@@ -48,11 +48,13 @@ io.on('connection', function (socket) {
 
     socket.on('newStock', function (stk) {
          console.log("Server newStock: " + stk);
-      var stock = String(stk || '');
+      var stock = String(stk.toUpperCase() || '');
     
       if (!stock.length){
        return; 
       }
+      
+      
                       request({
                 url: "https://www.quandl.com/api/v3/datasets/WIKI/" + stock + "/data.json?start_date=2016-01-01&end_date=2016-01-01&column_index=4&exclude_column_names=true&order=asc&api_key=FA9U87SHeUggkweQ-hdU",
                 method: "HEAD"}, //request params
@@ -61,28 +63,20 @@ io.on('connection', function (socket) {
                          console.log("Error: " + error);
                     }
                     else{
-                        var newStock = new Stock({"symbol": stock});
+                        if(response.statusCode != 404){
+                             var newStock = new Stock({"symbol": stock});
                         newStock.save(function(err, msg){
-                        if(msg && !err && response.statusCode != 404){
+                        if(msg && !err){
                         //broadcast('stock', stock);
                      broadcast("newStockSuccess", stock);
                      }
-                     else{
-                         socket.emit("deleteStock", stock);
-                     }
                     });
+                        }
+                        else{
+                         socket.emit("stockFailed", stock);
+                        }
                 }
                 });
-/*    //Add validation of stock symbol?
-            var newStock = new Stock({"symbol": stock});
-          newStock.save(function(err, msg){
-        if(msg && !err){
-          //broadcast('stock', stock);
-          
-          
-          broadcast("newStockSuccess", stock);
-        }
-      });*/
       
     }); //socket on new stock
     
@@ -95,6 +89,19 @@ io.on('connection', function (socket) {
       Stock.remove({"symbol": stock}, function(err, msg){
         if(msg && !err){
          broadcast('stockDeleteSuccess', stock);
+        }
+      });
+    });
+    
+          socket.on('stockFailed', function (stk) {
+           console.log("Server stockFailed");
+    var stock = String(stk || '');
+      if (!stock){
+       return; 
+      }
+      Stock.remove({"symbol": stock}, function(err, msg){
+        if(msg && !err){
+         socket.emit('stockFailureComplete', stock);
         }
       });
     });

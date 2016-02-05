@@ -8,200 +8,7 @@
     <link rel="stylesheet" href="/css/bootstrap-responsive.min.css">
     <link rel="stylesheet" href="/css/main.css">
    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
-   <script></script>
-    <script>
-    'use strict';
-    //test url: https://www.quandl.com/api/v3/datasets/WIKI/FB/data.json?start_date=2015-01-01&end_date=2016-01-01&column_index=4&exclude_column_names=true&order=asc&api_key=FA9U87SHeUggkweQ-hdU
-           google.load("visualization", "1", {packages:["corechart"]});
-        function StockController($scope) {
-        let socket = io.connect();
-        
-        $scope.stocks = [];
-        $scope.priceData = [];
-        $scope.text = '';
-        $scope.errorMsg = null;
-        $scope.startDate = Date.parse("2015-01-01");
-        $scope.endDate = Date.parse("2015-01-29");
-        let baseAPIstart = "https://www.quandl.com/api/v3/datasets/WIKI/";
-        let baseAPIend = "/data.json?start_date=2016-01-01&end_date=2016-01-29&column_index=4&exclude_column_names=true&order=asc&api_key=";
-        let APIkey = "FA9U87SHeUggkweQ-hdU"
-              socket.on('connect', function () {
-                  console.log("Client connect");
-         //socket.emit("renderChart", null);
-        });
-        
-        socket.on("newStockSuccess", function(stock){
-              console.log("Client newStock");
-                 $scope.errorMsg = null;
-          if($scope.stocks.indexOf(stock) == -1){
-              console.log("Adding stock?");
-              let x = $scope.stocks.length;
-            $scope.stocks[x] = stock;
-             $scope.$apply();
-              console.log($scope.stocks);
-            $scope.renderStocks();
-          }
-        });
-        
-        socket.on('stock', function (stock) {
-          $scope.errorMsg = null;
-          if($scope.stocks.indexOf(stock) == -1){
-            $scope.stocks[$scope.stocks.length] = stock;  
-          }
-          $scope.$apply();
-        });
-        
-        socket.on('renderChart', function(){
-             console.log("Client renderChart");
-          //console.log("SHOULD BE RENDERING");
-          $scope.renderStocks();
-        });
-        
-        socket.on('stockDeleteSuccess', function (stock) {
-          if($scope.stocks.indexOf(stock) > -1){
-              console.log("Client stockDeleteSuccess");
-             $scope.errorMsg = null;
-                      
-        $scope.stocks.splice($scope.stocks.indexOf(stock), 1);
-         $scope.$apply(); 
-       $scope.renderStocks();
-          }
-        });
-        
-        $scope.send = function send() {
-            console.log("Client Send");
-          socket.emit('newStock', $scope.text);
-          //socket.emit('renderChart', null);
-          $scope.text = '';
-        };
-        
-        $scope.deleteStock = function deleteStock(stock){
-            console.log("Client DeleteStock");
-          socket.emit('stockDelete', stock);
-        }
-        
-        $scope.renderStocks = function renderStocks(){
-           // console.log(stocks + "---" + stocks.length);
-           let cleanData = [];
-           let stocksTraversed = 0;
-           getData();
-           //.log($scope.stocks);
-           
-           function getData(){
-               for(let stockNum = 0; stockNum < $scope.stocks.length; stockNum++){
-                let theStock = $scope.stocks[stockNum];
-                     $.ajax({
-              url: baseAPIstart + theStock + baseAPIend + APIkey,
-              method: "GET",
-              success: function(doc, textStatus, xhr) {
-                 // console.log(xhr.status);
-                let stockDatums = doc.dataset_data.data;
-            if(cleanData.length == 0) { //First time through, with no dates yet in the dataset. Push date and price.
-               for(let dataPoint = 0; dataPoint < stockDatums.length; dataPoint++) {
-                  cleanData[dataPoint] = [new Date(stockDatums[dataPoint][0])];
-                  cleanData[dataPoint][stockNum+1] = stockDatums[dataPoint][1];
-                  if(dataPoint >= stockDatums.length - 1){
-                    if(stocksTraversed < $scope.stocks.length-1){
-                        stocksTraversed++;
-                    }
-                    else{
-                      drawChart();   
-                    }
-            }
-               }
-            } else { //subsequent times through, where the date may overlap. Only push the price.
-               for(let dataPoint = 0; dataPoint < stockDatums.length; dataPoint++){
-                   let date = new Date(stockDatums[dataPoint][0]).getTime();
-                   let dateIndex;
-                   for(let k = 0; k < cleanData.length; k++){
-                       if(cleanData[k][0].getTime() == date){
-                           dateIndex = k;
-                       }
-                   }
-                  if(dateIndex) {
-                     cleanData[dateIndex][stockNum+1] = stockDatums[dataPoint][1];
-                                       if(dataPoint >= stockDatums.length - 1){
-                    if(stocksTraversed < $scope.stocks.length-1){
-                        stocksTraversed++;
-                    }
-                    else{
-                      drawChart();   
-                    }
-            }
-                  }
-                  else{ //new dates on subsequent iterations
-                        let endIndex = cleanData.length;
-                        cleanData[endIndex] = [new Date(stockDatums[dataPoint][0])];
-                        cleanData[endIndex][stockNum+1] = stockDatums[dataPoint][stockNum+1];
-                    if(dataPoint >= stockDatums.length - 1){
-                    if(stocksTraversed < $scope.stocks.length-1){
-                        stocksTraversed++;
-                    }
-                    else{
-                      drawChart();   
-                    }
-            }
-                  }
-               }
-            }
-         }, error: function (request, textStatus, error) { 
-            for(let dataPoint = 0; dataPoint < cleanData.length; dataPoint++){
-                console.log("ERROR: " + error);
-               cleanData[dataPoint][stockNum+1] = null;
-                if(dataPoint >= stockDatums.length - 1){
-                    if(stocksTraversed < $scope.stocks.length-1){
-                        stocksTraversed++;
-                    }
-                    else{
-                      drawChart();   
-                      $scope.deleteStock(theStock);
-                    }
-            }
-            }
-         }});
-           }
-           }
-           
-        function drawChart(){
-            var data = new google.visualization.DataTable();
-            data.addColumn("date", 'Date');
-           for(let i = 0; i < $scope.stocks.length; i++){
-             data.addColumn("number", $scope.stocks[i]);
-             if(i == $scope.stocks.length - 1){
-               for(let j = 0; j < cleanData.length; j++){
-                 if(cleanData[j].length -1 == $scope.stocks.length){
-                        data.addRow(cleanData[j]); 
-                 }
-                 if(j == cleanData.length-1){
-                   finishDrawing(data);
-                 }
-               }
-             }
-        }
-      }
-      function finishDrawing(data){
-                     var options = {'title':"Stock Prices Over Time",
-                       'width':1000,
-                       'height':500,
-                       'colors':['blue', 'green', 'purple', 'orange', 'black'],
-                        'interpolateNulls': true,
-                         'vAxis': {
-                      'viewWindow': {
-                        'min':0
-                      }
-                     },
-                     'crosshair': { trigger: 'focus' }, 
-                     'hAxis':{
-                      'format': 'M/d/yy',
-                     }
-                      };
-          var chart = new google.visualization.LineChart(document.getElementById('stockChart'));
-        chart.draw(data, options); 
-      }
-        }
-          }
-    </script>
-    <!-- <script src="/js/controllers/StockController.js"></script> -->
+    <script src="/js/controllers/StockController.js"></script>
   </head>
   <body>
     <div class="container" ng-controller="StockController">
@@ -215,14 +22,17 @@
       <div class="page-header">
         <h1>Stock Market Tracker</h1>
       </div>
+      Start Date: <input ng-model="startDate" id="startDateInput" type="date" ng-change="renderStocks()"/>
+      End Date: <input ng-model="endDate" id="endDateInput" type="date" ng-change="renderStocks()"/>
       <div id="stockChart"></div>
       <div class="row">
         <div class="span12">
           <h2>Tracked Stocks</h2>
-                <div id="errorMessage" ng-disabled="!errorMsg" ng-bind="errorMsg"></div>
+                <div id="actionMessage" ng-disabled="!actionMsg" ng-bind="actionMsg"></div>
+                <br />
                 <div ng-repeat="stock in stocks" class="span3 stockEntry">
                   <span ng-bind="stock"></span>
-                  <button ng-click="deleteStock(stock)">X</button>
+                  <button ng-click="deleteStock(stock)" class="btn btn-danger">X</button>
                 </div>
           </div>
           </div>
