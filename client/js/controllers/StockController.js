@@ -1,5 +1,4 @@
     'use strict';
-    //test url: https://www.quandl.com/api/v3/datasets/WIKI/FB/data.json?start_date=2015-01-01&end_date=2016-01-01&column_index=4&exclude_column_names=true&order=asc&api_key=FA9U87SHeUggkweQ-hdU
            google.load("visualization", "1", {packages:["corechart"]});
         function StockController($scope) {
         let socket = io.connect();
@@ -9,9 +8,10 @@
         $scope.text = '';
         $scope.actionMsg = null;
         $scope.startDate = "2015-01-01";
+        var apiKey;
         var currentDate = new Date();
             var dd = currentDate.getDate();
-            var mm = currentDate.getMonth()+1; //January is 0!
+            var mm = currentDate.getMonth()+1;
             var yyyy = currentDate.getFullYear();
             if(dd<10) {
                 dd='0'+dd;
@@ -32,7 +32,7 @@
               let x = $scope.stocks.length;
             $scope.stocks[x] = data.stock;
              $scope.$apply();
-            $scope.renderStocks(data.quandlKey);
+            $scope.renderStocks();
           }
         });
         
@@ -56,7 +56,7 @@
              console.log("datamsg " + data.msg);
         $scope.stocks.splice($scope.stocks.indexOf(data.stock), 1);
          $scope.$apply();
-       $scope.renderStocks(data.quandlKey);
+       $scope.renderStocks();
           }
         }
         );
@@ -74,6 +74,9 @@
         }
         
         $scope.renderStocks = function renderStocks(quandlKey){
+            if(quandlKey){
+                apiKey = quandlKey
+            }
            let cleanData = [];
            let stocksTraversed = 0;
            getData();
@@ -85,7 +88,7 @@
               
               url: baseAPIstart + theStock + 
                 "/data.json?start_date=" + $scope.startDate + "&end_date=" + $scope.endDate +
-                "&column_index=4&exclude_column_names=true&order=asc&api_key=" + quandlKey,
+                "&column_index=4&exclude_column_names=true&order=asc&api_key=" + apiKey,
               method: "GET",
               success: function(doc, textStatus, xhr) {
                  // console.log(xhr.status);

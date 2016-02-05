@@ -66,18 +66,17 @@ io.on('connection', function (socket) {
                         newStock.save(function(err, msg){
                         if(msg && !err){
                         //broadcast('stock', stock);
-                     broadcast("newStockSuccess", {"stock": stock, "quandlKey": process.env.QUANDL_KEY});
+                     broadcast("newStockSuccess", {"stock": stock});
                      }
                     });
                         }
                         else{
                             console.log("404ing!");
-                         socket.emit("stockDeleteSuccess", {"stock": stock, "quandlKey": process.env.QUANDL_KEY,
+                         socket.emit("stockDeleteSuccess", {"stock": stock,
                          "msg": "\"" + stock + "\" was unsuccessfully added to the chart. Try a different stock symbol."});
                         }
                 }
                 });
-      
     }); //socket on new stock
     
       socket.on('stockDelete', function (data) {
@@ -88,7 +87,7 @@ io.on('connection', function (socket) {
       }
       Stock.remove({"symbol": stock}, function(err, msg){
         if(msg && !err){
-         broadcast('stockDeleteSuccess', {"stock": stock, "quandlKey": process.env.QUANDL_KEY, "msg": data.msg});
+         broadcast('stockDeleteSuccess', {"stock": stock, "msg": data.msg});
         }
       });
     });
