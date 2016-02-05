@@ -21,19 +21,18 @@
             } 
             $scope.endDate = yyyy+'-'+mm+'-'+dd;
         let baseAPIstart = "https://www.quandl.com/api/v3/datasets/WIKI/";
-        let APIkey = "FA9U87SHeUggkweQ-hdU"
               socket.on('connect', function () {
                   console.log("Client connect");
         });
         
-        socket.on("newStockSuccess", function(stock){
+        socket.on("newStockSuccess", function(data){
               console.log("Client newStock");
                  $scope.actionMsg = "Stock successfully added!";
-          if($scope.stocks.indexOf(stock) == -1){
+          if($scope.stocks.indexOf(data.stock) == -1){
               let x = $scope.stocks.length;
-            $scope.stocks[x] = stock;
+            $scope.stocks[x] = data.stock;
              $scope.$apply();
-            $scope.renderStocks();
+            $scope.renderStocks(data.quandlKey);
           }
         });
         
@@ -44,9 +43,9 @@
           $scope.$apply();
         });
         
-        socket.on('renderChart', function(){
+        socket.on('renderChart', function(quandlKey){
              console.log("Client renderChart");
-          $scope.renderStocks();
+          $scope.renderStocks(quandlKey);
         });
         
         socket.on('stockDeleteSuccess', function (data) {
@@ -57,7 +56,7 @@
              console.log("datamsg " + data.msg);
         $scope.stocks.splice($scope.stocks.indexOf(data.stock), 1);
          $scope.$apply();
-       $scope.renderStocks();
+       $scope.renderStocks(data.quandlKey);
           }
         }
         );
@@ -74,7 +73,7 @@
           socket.emit('stockDelete', {"stock": stock, "msg": "\"" + stock + "\" was successfully deleted from the chart."});
         }
         
-        $scope.renderStocks = function renderStocks(){
+        $scope.renderStocks = function renderStocks(quandlKey){
            let cleanData = [];
            let stocksTraversed = 0;
            getData();
@@ -86,7 +85,7 @@
               
               url: baseAPIstart + theStock + 
                 "/data.json?start_date=" + $scope.startDate + "&end_date=" + $scope.endDate +
-                "&column_index=4&exclude_column_names=true&order=asc&api_key=" + APIkey,
+                "&column_index=4&exclude_column_names=true&order=asc&api_key=" + quandlKey,
               method: "GET",
               success: function(doc, textStatus, xhr) {
                  // console.log(xhr.status);

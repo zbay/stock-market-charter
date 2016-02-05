@@ -2,11 +2,11 @@
 var http = require('http');
 var path = require('path');
 
+require('dotenv').config();
 var request = require("request");
 var async = require('async');
 var socketio = require('socket.io');
 var express = require('express');
-var dotenv = require('dotenv');
 var mongo = require('mongodb');
 var mongoose = require('mongoose');
 var Stock = require("./dbmodels/stock.js");
@@ -29,12 +29,12 @@ router.use(express.static(path.resolve(__dirname, 'client')));
 var sockets = [];
 
 io.on('connection', function (socket) {
-     console.log("Server connection");
+     console.log("Server connection: " + process.env.QUANDL_KEY);
     Stock.find({}, function(err, doc){
         for(let i = 0; i < doc.length; i++){
             socket.emit("stock", doc[i].symbol);
             if(i == doc.length-1){
-              socket.emit("renderChart", null);
+              socket.emit("renderChart", process.env.QUANDL_KEY);
             }
           }
     });
@@ -54,7 +54,8 @@ io.on('connection', function (socket) {
        return; 
       }
                       request({
-                url: "https://www.quandl.com/api/v3/datasets/WIKI/" + stock + "/data.json?start_date=2016-01-01&end_date=2016-01-01&column_index=4&exclude_column_names=true&order=asc&api_key=FA9U87SHeUggkweQ-hdU",
+                url: "https://www.quandl.com/api/v3/datasets/WIKI/" + stock + 
+                "/data.json?start_date=2016-01-01&end_date=2016-01-01&column_index=4&exclude_column_names=true&order=asc&api_key=" + process.env.QUANDL_KEY,
                 method: "HEAD"}, //request params
                 function(error, response, body){
                     if(error){
@@ -66,13 +67,14 @@ io.on('connection', function (socket) {
                         newStock.save(function(err, msg){
                         if(msg && !err){
                         //broadcast('stock', stock);
-                     broadcast("newStockSuccess", stock);
+                     broadcast("newStockSuccess", {"stock": stock, "quandlKey": process.env.QUANDL_KEY});
                      }
                     });
                         }
                         else{
                             console.log("404ing!");
-                         socket.emit("stockDeleteSuccess", {"stock": stock, "msg": "\"" + stock + "\" was unsuccessfully added to the chart. Try a different stock symbol."});
+                         socket.emit("stockDeleteSuccess", {"stock": stock, "quandlKey": process.env.QUANDL_KEY,
+                         "msg": "\"" + stock + "\" was unsuccessfully added to the chart. Try a different stock symbol."});
                         }
                 }
                 });
@@ -87,7 +89,7 @@ io.on('connection', function (socket) {
       }
       Stock.remove({"symbol": stock}, function(err, msg){
         if(msg && !err){
-         broadcast('stockDeleteSuccess', {"stock": stock, "msg": data.msg});
+         broadcast('stockDeleteSuccess', {"stock": stock, "quandlKey": process.env.QUANDL_KEY, "msg": data.msg});
         }
       });
     });
