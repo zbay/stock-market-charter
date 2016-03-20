@@ -1,10 +1,10 @@
 {
-  "name": "chat-example",
+  "name": "stock-market-charter",
   "version": "0.0.0",
-  "description": "A chat example to showcase how to use `socket.io` with a static `express` server with `async` for control flow.",
+  "description": "Chart stocks in real-time",
   "main": "server.js",
   "repository": "",
-  "author": "Mostafa Eweda <mo.eweda@gmail.com>",
+  "author": "Zachary Williams <zlwilliams1@gmail.com>",
   "dependencies": {
     "async": "~0.2.8",
     "dotenv": "^2.0.0",
